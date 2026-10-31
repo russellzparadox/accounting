@@ -43,7 +43,10 @@ jobs:
         run: chmod +x gradlew
 
       - name: Lint, test, assemble debug
-        run: ./gradlew --stacktrace lint test assembleDebug
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --stacktrace lint test assembleDebug 2>&1 | tee gradle-build.log
 
       - name: Upload debug APK
         if: success()
@@ -65,3 +68,12 @@ jobs:
             **/build/test-results/**
             **/build/outputs/lint-results*
             **/build/outputs/logs/**
+
+      - name: Failure summary (short, read this first)
+        if: failure()
+        run: |
+          if [ ! -f gradle-build.log ]; then
+            echo "gradle-build.log missing; gradle step did not run"
+            exit 0
+          fi
+          grep -E '^e: |^w: .*error|What went wrong|FAILURE' -A4 gradle-build.log | head -80 || true
