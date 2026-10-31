@@ -33,4 +33,22 @@ describe("provider selection (env)", () => {
     expect(() => loadConfig({ LLM_PROVIDER: "gemini" })).toThrow("LLM_PROVIDER must be anthropic or openai");
     expect(loadConfig({ LLM_PROVIDER: "openai", LLM_MODEL: "m", LLM_TIMEOUT_MS: "-3" }).timeoutMs).toBe(20_000);
   });
+
+  it("stt: unset base URL means disabled; trailing slashes stripped; defaults", () => {
+    const off = loadConfig({ ANTHROPIC_API_KEY: "k" });
+    expect(off.sttBaseUrl).toBeUndefined();
+    expect(off.sttApiKey).toBeUndefined();
+    expect(off.sttModel).toBe("whisper-1");
+    expect(off.sttTimeoutMs).toBe(30_000);
+    const on = loadConfig({
+      ANTHROPIC_API_KEY: "k", STT_BASE_URL: "https://api.groq.com/openai/v1//", STT_API_KEY: "g",
+      STT_MODEL: "whisper-large-v3", STT_TIMEOUT_MS: "9000",
+    });
+    expect(on.sttBaseUrl).toBe("https://api.groq.com/openai/v1");
+    expect(on.sttApiKey).toBe("g");
+    expect(on.sttModel).toBe("whisper-large-v3");
+    expect(on.sttTimeoutMs).toBe(9000);
+    expect(loadConfig({ ANTHROPIC_API_KEY: "k", STT_BASE_URL: "   " }).sttBaseUrl).toBeUndefined();
+    expect(loadConfig({ ANTHROPIC_API_KEY: "k", STT_TIMEOUT_MS: "-1" }).sttTimeoutMs).toBe(30_000);
+  });
 });
