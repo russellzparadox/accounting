@@ -23,7 +23,10 @@
   - `ReportExportTest` uses an in-memory database and never touches the app's file.
   - Test tags on the quick manual sheet: `MANUAL_AMOUNT_FIELD_TAG`, `MANUAL_SUBMIT_TAG` (feature/entry `ManualEntrySheet.kt`). They attach no behaviour.
 - Local runs: `./gradlew :app:connectedDebugAndroidTest` needs a device or emulator. Google Maven is blocked in the cloud session, so the CI run is the only place these tests have compiled and run.
-- Reading a red emulator run: the `Check that QA screenshots...` step tells you whether any screenshots were pulled. The `Run instrumented tests` step ends with Gradle's status. Failures are in `androidtest-reports` (`app/build/outputs/androidTest-results`), and the job log has the Gradle lines.
+- Reading a red emulator run: the `Check that QA screenshots...` step tells you whether any screenshots were pulled. The `Run instrumented tests` step ends with Gradle's status.
+  - The job log tail is often only post-job cleanup, so the `Failure summary` step also emits each failed androidTest case and each Gradle failure line as a `::error` annotation. Read them with the public API: `GET /repos/russellzparadox/accounting/actions/jobs/<job_id>` gives `check_run_url`; then `GET <check_run_url>/annotations`.
+  - `.github/scripts/pull-qa.sh` pulls `qa/` with `adb pull` and, when that yields no PNG, falls back to `adb exec-out run-as` (the debug build is debuggable). It logs the device listing of the app files folder for diagnosis.
+  - Failures are in `androidtest-reports` (`app/build/outputs/androidTest-results`), and `qa-artifacts/gradle-instrumented.log` and `logcat.txt` (filtered) / `logcat-full.txt` hold the Gradle and device output.
 
 ## Secrets (optional, for signed release)
 - `KEYSTORE_BASE64` (base64 of the `.jks`/`.keystore`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
