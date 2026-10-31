@@ -1,5 +1,5 @@
 # T08 — entry-ui
-Status: in_progress
+Status: done
 Depends: T01b, T08a
 Read first: CLAUDE.md, handouts/T01b-design-system.md, handouts/T04-room-persistence.md, handouts/T07-nl-pipeline.md
 Skills to invoke: impeccable, ui-ux-pro-max (only if installed; else design:design-system, design:ux-copy, design:accessibility-review), persian-writing:persian-writing
@@ -48,3 +48,9 @@ Skills to invoke: impeccable, ui-ux-pro-max (only if installed; else design:desi
 - Code is pushed (b85931c, 6ad85a9) but CI is RED: run 41190059431 (79) and run 41190274372 (80, head 6ad85a9). Previous subagent stopped without a handout. Read the 'Failure summary' step of run 80's job (mcp__github__get_job_logs, tail_lines 130), fix root causes only (compile errors / failing tests), no weakening or skipping tests, no scope growth.
 - Then write `handouts/T08-entry-ui.md` (screens, composable API, how it is launched from MainActivity, strings added, design review findings from design:design-critique + design:accessibility-review done at code level, final CI run id + conclusion) and set Status done only if the final run on your last pushed commit is success.
 - Pushes: ONE per attempt; wait for that run to complete before pushing again (public API polling with `until` loop in Bash run_in_background). Max 5 pushes. Include this uncommitted task-file edit in your first commit.
+
+## FIX ROUND 1 result (done)
+- Root causes (test code only): default Robolectric window too small for the confirmation card (fixed with phone-sized qualifier); Confirm button label equals title label (fixed by matching button with click action); bad import removed.
+- Pushes: 199b493, 8a20589, 40b017b (3 of 5). Final green run 41190861220 (head 40b017b): success.
+- Handout: `handouts/T08-entry-ui.md`.
+- Design skills (`design:design-critique`, `design:accessibility-review`) NOT run in this round. Only a code-level read was done. Findings listed in handout as open items.
