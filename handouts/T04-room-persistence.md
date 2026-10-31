@@ -1,5 +1,12 @@
 # Handout T04 — room-persistence
-Status: partial (code pushed; CI conclusion NOT obtained)
+Status: done (CI green: run https://github.com/russellzparadox/accounting/actions/runs/41184633366 on head 0be0c35)
+
+## Fix round result
+- Green `android` run: 41184633366 (head 0be0c35, `success`). Compile, `:core:data:testDebugUnitTest`, lint and assembleDebug all passed.
+- Failure summary step now prints failed test names + first message from `build/test-results/**/*.xml` (commit 3fecb11).
+- Failure found by it: run 41184496668 (head bf115ea). `LedgerRepositoryTest.initializationError`: `Method documentCanBeReversedOnlyOnce() should be void`. Cause: expression-bodied `runBlocking` returned the `Throwable` from `assertThrows`. Its other tests did not run because the class failed to initialize. Fix: block-bodied test (commit 0be0c35), assertion unchanged. No test, skip, or trigger was removed or weakened.
+- Runs that did not test anything: 41184374533 (3fecb11) `cancelled`, superseded by bf115ea (a status-only commit from the same branch, not from this round). 41184349306 (53ab16e) `cancelled` for the same reason.
+- Test runner unchanged: Robolectric 4.14.1 + in-memory Room, `@Config(sdk=[34])`.
 
 ## Summary
 - Room 2.7.2 + KSP in `core:data`. In-memory Room + Robolectric tests under `core/data/src/test`.
