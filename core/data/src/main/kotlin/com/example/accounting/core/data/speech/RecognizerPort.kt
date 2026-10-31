@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognitionSupport
+import android.speech.ModelDownloadListener
 import android.speech.RecognitionSupportCallback
 import android.speech.SpeechRecognizer
 import java.util.concurrent.Executor
@@ -173,7 +174,7 @@ private class AndroidRecognizerPort(
             return
         }
         if (Build.VERSION.SDK_INT >= 34) {
-            rec.triggerModelDownload(intent, mainExecutor, object : SpeechRecognizer.ModelDownloadListener {
+            rec.triggerModelDownload(intent, mainExecutor, object : ModelDownloadListener {
                 override fun onProgress(completedPercent: Int) = onEvent(PackEvent.Progress(completedPercent))
 
                 override fun onScheduled() = onEvent(PackEvent.Scheduled)
