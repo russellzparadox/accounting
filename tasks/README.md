@@ -25,7 +25,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T12 | settings-onboarding | T08, T10b, T11 | done (CI green run 115, build #115; follow-through in T12b) |
 | T12b | settings-follow-through | T12 | done (CI green run 41203285636, build #118; audit items 1-5 MET, 2 code-only sub-points) |
 | T13a | emulator-qa | T12b | done (instrumented run 41208267404 green, 13 QA files pulled; PDF Persian shaping needs human look) |
-| T13 | qa | T12b, T13a | in_progress |
+| T13 | qa | T12b, T13a | done (CI green run 41210267830 on de7c888; live LLM eval not run, no key; see handouts/T13-qa.md) |
 | T14 | release-prep | T13 | todo |
 
 ## Run order
