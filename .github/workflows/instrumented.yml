@@ -53,13 +53,21 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: "status=0; mkdir -p qa-artifacts; ./gradlew --stacktrace :app:connectedDebugAndroidTest > qa-artifacts/gradle-instrumented.log 2>&1 || status=$?; tail -n 60 qa-artifacts/gradle-instrumented.log; adb logcat -d -v threadtime > qa-artifacts/logcat-full.txt 2>&1 || echo 'adb logcat failed'; grep -E 'com[.]example[.]accounting|AndroidRuntime|TestRunner|androidx[.]test|Room|Hilt|FATAL' qa-artifacts/logcat-full.txt > qa-artifacts/logcat.txt || true; bash .github/scripts/pull-qa.sh || echo 'pull-qa.sh failed'; exit $status"
 
-      - name: Check that QA screenshots and PDF pages were pulled
+      # Gate: green only when every expected QA file was pulled from files/qa (10 screenshots, PDF, PDF page PNGs, CSV).
+      - name: Check that QA screenshots, PDF, PDF pages and CSV were pulled
         if: always()
         run: |
-          count=$(find qa-artifacts -name '*.png' 2>/dev/null | wc -l)
-          echo "png files: $count"
+          qa=qa-artifacts/qa
+          shots=$(ls "$qa" 2>/dev/null | grep -cE '^(0[1-9]|10)-.+\.png$' || true)
+          pages=$(ls "$qa" 2>/dev/null | grep -cE '^trial-balance-page-[0-9]+\.png$' || true)
+          echo "screenshots: ${shots:-0}/10, pdf pages: ${pages:-0}"
           find qa-artifacts -type f 2>/dev/null | sort
-          test "$count" -gt 0
+          missing=0
+          [ "${shots:-0}" -ge 10 ] || { echo "::error title=qa-artifacts::screenshots ${shots:-0}/10 pulled"; missing=1; }
+          [ "${pages:-0}" -ge 1 ] || { echo "::error title=qa-artifacts::no trial-balance-page PNG pulled"; missing=1; }
+          [ -s "$qa/trial-balance.pdf" ] || { echo "::error title=qa-artifacts::trial-balance.pdf missing"; missing=1; }
+          [ -s "$qa/trial-balance.csv" ] || { echo "::error title=qa-artifacts::trial-balance.csv missing"; missing=1; }
+          exit $missing
 
       - name: Upload QA artifacts (screenshots, PDF pages, PDF, CSV)
         if: always()

@@ -11,7 +11,7 @@
 ## Emulator QA (`instrumented.yml`)
 - How to run: Actions tab, `instrumented`, Run workflow, pick the branch. Takes about 15-25 min (emulator boot, Gradle, tests).
 - Emulator: API 34, x86_64, google_apis, pixel_6, KVM enabled by a udev rule, animations disabled.
-- Runs `./gradlew :app:connectedDebugAndroidTest`, then pulls the app's `files/qa/` folder with `adb`.
+- Runs `./gradlew :app:connectedDebugAndroidTest`, then pulls the app's internal `files/qa/` folder (`run-as` tar stream, see `.github/scripts/pull-qa.sh`). The external `Android/data` folder is not used: `adb pull` cannot read it on API 30+.
 - Artifacts (on the run page, Artifacts):
   - `qa-artifacts`: `qa/*.png` = screenshots `01-entry-committed` ... `10-manual-editor`. `qa/trial-balance.pdf` (the real PdfExporter output). `qa/trial-balance-page-N.png` (each PDF page rendered by PdfRenderer). `qa/trial-balance.csv` (BOM + headers).
   - `androidtest-reports`: JUnit XML and HTML from `connectedDebugAndroidTest`.
@@ -25,7 +25,7 @@
 - Local runs: `./gradlew :app:connectedDebugAndroidTest` needs a device or emulator. Google Maven is blocked in the cloud session, so the CI run is the only place these tests have compiled and run.
 - Reading a red emulator run: the `Check that QA screenshots...` step tells you whether any screenshots were pulled. The `Run instrumented tests` step ends with Gradle's status.
   - The job log tail is often only post-job cleanup, so the `Failure summary` step also emits each failed androidTest case and each Gradle failure line as a `::error` annotation. Read them with the public API: `GET /repos/russellzparadox/accounting/actions/jobs/<job_id>` gives `check_run_url`; then `GET <check_run_url>/annotations`.
-  - `.github/scripts/pull-qa.sh` pulls `qa/` with `adb pull` and, when that yields no PNG, falls back to `adb exec-out run-as` (the debug build is debuggable). It logs the device listing of the app files folder for diagnosis.
+  - `.github/scripts/pull-qa.sh` pulls `files/qa/` with `adb exec-out run-as com.example.accounting tar c -C files qa` into `qa-artifacts/qa/`. When no PNG arrives it falls back to a per-file `run-as cat`. It logs the `run-as ls` listing for diagnosis. The gate step `Check that QA screenshots...` fails unless all 10 screenshots, the PDF, at least one PDF page PNG and the CSV are present.
   - Failures are in `androidtest-reports` (`app/build/outputs/androidTest-results`), and `qa-artifacts/gradle-instrumented.log` and `logcat.txt` (filtered) / `logcat-full.txt` hold the Gradle and device output.
 
 ## Secrets (optional, for signed release)

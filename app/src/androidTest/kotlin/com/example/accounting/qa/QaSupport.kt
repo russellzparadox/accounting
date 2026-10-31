@@ -1,6 +1,7 @@
 package com.example.accounting.qa
 
 import android.content.Context
+import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import com.example.accounting.core.data.db.AppDatabase
@@ -10,13 +11,15 @@ import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
 /**
- * QA output folder. Pulled by the `instrumented` workflow with
- * `adb pull /sdcard/Android/data/com.example.accounting/files/qa` (app external files dir, `qa/`).
+ * QA output folder: the app's INTERNAL `files/qa` (`targetContext.filesDir`). Always non-null, no scoped-storage
+ * limits. Pulled by `.github/scripts/pull-qa.sh` with `adb exec-out run-as com.example.accounting tar c -C files qa`
+ * (the debug build is debuggable). The absolute path is logged under tag `QA` for diagnosis.
  */
 object QaOutput {
     fun dir(context: Context): File {
-        val base = context.getExternalFilesDir(null) ?: context.filesDir
-        return File(base, "qa").apply { mkdirs() }
+        val qa = File(context.filesDir, "qa").apply { mkdirs() }
+        Log.i("QA", "output dir: ${qa.absolutePath}")
+        return qa
     }
 
     /** Full-device screenshot through UiAutomation. Fails the test if the PNG is not written. */
