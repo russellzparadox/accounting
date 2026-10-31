@@ -234,14 +234,16 @@ class ManualJournalViewModelTest {
         awaitRows(vm)
         fillBalanced(vm, debit = "1100", credit = "4100", amount = "500000")
         vm.onAction(ManualAction.SetDate("۱۴۰۵/۰۱/۰۱"))
-        val ui = awaitValue({ vm.ui.value }) { !it.dateYearOpened }
+        // Wait for canSave too: accounts load asynchronously, and check.isValid needs them.
+        val ui = awaitValue({ vm.ui.value }) { !it.dateYearOpened && it.canSave }
         assertEquals(1405, ui.dateYear)
-        assertTrue(ui.canSave)
+        assertTrue("canSave false, issues=${ui.check.issues}", ui.canSave)
 
         vm.onAction(ManualAction.Save)
         val saved = awaitValue({ vm.ui.value }) { it.savedDocNumber != null }
         assertEquals(1, saved.savedDocNumber)
-        assertTrue(runBlocking { ledger.fiscalYears().first() }.contains(1405))
+        val years = runBlocking { ledger.fiscalYears().first() }
+        assertTrue("fiscal years=$years", years.contains(1405))
     }
 
     @Test
