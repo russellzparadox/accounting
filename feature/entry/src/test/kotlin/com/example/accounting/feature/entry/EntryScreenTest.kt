@@ -6,12 +6,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -69,6 +73,13 @@ class EntryScreenTest {
 
     private fun str(id: Int, vararg args: Any): String = context.getString(id, *args)
 
+    /**
+     * The Confirm button only. Its label is the same string as the top-bar title (entry_title), so a
+     * plain text query matches two nodes; the click action picks the button.
+     */
+    private fun confirmButton(): SemanticsMatcher =
+        hasText(str(R.string.confirm_action)) and hasClickAction()
+
     @Test
     fun layoutIsRtlAndInputBarHasDescriptions() {
         compose.setContent {
@@ -107,7 +118,7 @@ class EntryScreenTest {
         compose.onNodeWithText(str(R.string.confirm_title)).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.confirm_debit_total, SODA_TOMAN_TEXT)).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.confirm_credit_total, SODA_TOMAN_TEXT)).assertIsDisplayed()
-        compose.onNodeWithText(str(R.string.confirm_action)).performClick()
+        compose.onNode(confirmButton()).performClick()
         assertEquals(listOf<EntryAction>(EntryAction.Confirm(card.id)), actions)
     }
 
@@ -173,10 +184,10 @@ class EntryScreenTest {
             compose.onNode(hasSetTextAction()).performTextInput(SODA_TEXT)
             compose.onNodeWithContentDescription(str(R.string.input_send_cd)).performClick()
             compose.waitUntil(TIMEOUT_MS) {
-                compose.onAllNodesWithText(str(R.string.confirm_action)).fetchSemanticsNodes().isNotEmpty()
+                compose.onAllNodes(confirmButton()).fetchSemanticsNodes().isNotEmpty()
             }
 
-            compose.onNodeWithText(str(R.string.confirm_action)).performClick()
+            compose.onNode(confirmButton()).performClick()
             compose.waitUntil(TIMEOUT_MS) {
                 compose.onAllNodesWithText(str(R.string.reverse_action)).fetchSemanticsNodes().isNotEmpty()
             }
