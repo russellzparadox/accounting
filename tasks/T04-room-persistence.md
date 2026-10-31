@@ -36,3 +36,9 @@ Skills to invoke: none
 - Implement domain ports: `PartyAccountResolver` (T03) backed by DB: find-or-create معین under 1300 (codes 1301..1349) / 2100 (2101..2199) by `partyKey(name)`; persist `party` table (kind, key, displayName, accountCode) and the created Account row; deterministic next-code allocation; error when range exhausted.
 - Repository API for upper layers (document signatures in handout): `LedgerRepository.commit(entry: JournalEntry): CommittedDoc` (allocates doc number per fiscal year in the same transaction, persists lines, rejects unbalanced/out-of-fiscal-year), `reverse(docId, date, memo)` (uses domain `PostingEngine.reverse`, new doc number), `journal(fiscalYear, from?, to?)` Flow, `ledger(accountCode, range)` with running balance Flow, `trialBalance(fiscalYear, asOf?)` -> rows (code, name, debit, credit) with totals equal, `accounts()` Flow, `ensureFiscalYear(jalaliYear)`.
 - Triggers: BEFORE UPDATE/DELETE on journal_entry and journal_line raise ABORT (reversal only creates new docs). Test with raw SQL.
+
+## FIX ROUND (main agent, after CI run 41183883624)
+- Compile OK in CI. FAILED: `:core:data:testDebugUnitTest` ("There were failing tests"). Failing test names unknown.
+- Step 1: extend the "Failure summary" step in `.github/workflows/android.yml` to print failed test names + first assertion message from `**/build/test-results/**/*.xml` (e.g. python/grep for `<failure message=` with the preceding `testcase name=`; cap ~60 lines). Push, read result with `get_job_logs` small `tail_lines` (<= 90; post-job noise is ~35 lines).
+- Step 2: fix root causes (production code or wrong test). Never delete/skip/weaken tests or the immutability triggers. Iterate max 6 pushes. Commit prefix `T04:`.
+- Done = latest `android` run on branch head `success`; handout updated with run URL; Status done.
