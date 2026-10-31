@@ -1,5 +1,5 @@
 # T03 — domain-core
-Status: in_progress
+Status: done
 Depends: T02, T01
 Read first: CLAUDE.md, handouts/T02-accounting-rules.md, handouts/T01-android-scaffold.md
 Skills to invoke: none
