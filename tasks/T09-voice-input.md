@@ -1,5 +1,5 @@
 # T09 — voice-input
-Status: partial
+Status: done (accepted by main agent; see decisions in handout)
 Depends: T08
 Read first: CLAUDE.md, handouts/T08-entry-ui.md
 Skills to invoke: design:ux-copy, persian-writing:persian-writing

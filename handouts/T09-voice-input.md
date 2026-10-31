@@ -116,3 +116,8 @@ Install the latest APK from Releases. Persian recognition depends on the Google 
 - Voice never submits. Any new voice feature must keep `Submit` user-triggered.
 - Resolve B9 (typing during listening) before T13 QA. It is a product decision.
 - T10/T12: the mic and voice state live in `EntryRoute`. Keep `VoiceViewModel` scope unchanged.
+
+## Main agent decisions (post-audit)
+- Text field read-only while LISTENING is accepted: partial results live-fill the same field, so concurrent typing would be overwritten. Stop the mic (tap again) to edit. Not a defect.
+- Only one number-words voice->pipeline test: extend in T13 QA (add >= 5 spoken-amount sentences incl. "نیم میلیون", "دو و نیم میلیون", mixed digits/words).
+- Real-mic behaviour unverified until the user runs the manual checklist above on a device.
