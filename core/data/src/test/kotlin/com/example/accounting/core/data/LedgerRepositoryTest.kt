@@ -133,11 +133,13 @@ class LedgerRepositoryTest {
     }
 
     @Test
-    fun documentCanBeReversedOnlyOnce() = runBlocking {
-        val first = cashSale(oct1, 1000)
-        repo.commit(first)
-        repo.reverse(first.id, oct1)
-        assertThrows(DomainException::class.java) { runBlocking { repo.reverse(first.id, oct1) } }
+    fun documentCanBeReversedOnlyOnce() {
+        runBlocking {
+            val first = cashSale(oct1, 1000)
+            repo.commit(first)
+            repo.reverse(first.id, oct1)
+            assertThrows(DomainException::class.java) { runBlocking { repo.reverse(first.id, oct1) } }
+        }
     }
 
     @Test
