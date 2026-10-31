@@ -12,6 +12,17 @@
 - Set under repo Settings, Secrets and variables, Actions. If any is missing the release is unsigned (`app-release-unsigned.apk`).
 - Signing happens after assembly because `app/build.gradle.kts` has no `signingConfig`.
 
+## Testing a build on your phone
+- Stable link (always the newest build from the dev branch): `https://github.com/russellzparadox/accounting/releases/download/latest/accounting-debug-latest.apk`
+- Per build: Releases page `https://github.com/russellzparadox/accounting/releases`, pick `build-<n>`, asset `accounting-debug-<n>-<shortsha>.apk`. Direct URL: `https://github.com/russellzparadox/accounting/releases/download/build-<n>/accounting-debug-<n>-<shortsha>.apk`.
+- Each release body has: commit, CI run link, SHA-256, min Android (8.0 / API 26), commits since the previous build.
+- Install: open the link in the phone browser, download, open the file. Allow the browser to install unknown apps when Android asks (Settings, Apps, Special access, Install unknown apps). Android may also show Play Protect warnings for the debug build; this is expected.
+- Updates install over the previous debug build (same debug key). If Android says the package conflicts with an installed app, uninstall the old one first.
+- Version: Settings, Apps, accounting, shows `0.1.<n>` where `<n>` is the CI run number (versionCode = `<n>`). Local builds show `0.1.0`.
+- Debug build, signed with the debug key, for testing only.
+- Publishing rules: only a successful `android` build of a push to `claude/dreamy-mccarthy-mczm8c`, `main` or `master` publishes. PRs, forks, dependabot and tag pushes never publish. A superseded run is cancelled in its build job and then publishes nothing. A publish that started is not cancelled by a newer push.
+- Retention: the newest 15 `build-*` releases and tags are kept. `latest` and `v*` releases are never deleted.
+
 ## Download an APK
 - Branch/PR builds: Actions tab, pick the run, download `app-debug` under Artifacts.
 - Releases: Releases page, download `app-release.apk` (or `app-release-unsigned.apk`).
