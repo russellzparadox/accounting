@@ -55,8 +55,16 @@ class PostingEngineTest {
     }
 
     @Test
-    fun templateIdsAreTheFourteenFromRules() {
-        assertEquals(14, TemplateId.entries.size)
+    fun templateIdsAreTheFourteenFromRulesPlusManual() {
+        // 13 intent ids + REVERSAL (rules section 8) + MANUAL (free-form document, never an intent).
+        assertEquals(15, TemplateId.entries.size)
+        assertTrue(MANUAL in TemplateId.entries)
+    }
+
+    @Test
+    fun manualIsRejectedAsIntent() {
+        val manual = intent(MANUAL, paidWith = CASH)
+        assertFailsWith<DomainException> { testEngine().post(manual) }
     }
 
     @Test

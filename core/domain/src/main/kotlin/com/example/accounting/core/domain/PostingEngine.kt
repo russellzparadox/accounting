@@ -117,6 +117,7 @@ class PostingEngine(
                 }
             }
             TemplateId.REVERSAL -> throw DomainException("REVERSAL is not an intent; use PostingEngine.reverse()")
+            TemplateId.MANUAL -> throw DomainException("MANUAL is not an intent; use ManualJournal.build()")
         }
         return JournalEntry(
             id = idGenerator(),

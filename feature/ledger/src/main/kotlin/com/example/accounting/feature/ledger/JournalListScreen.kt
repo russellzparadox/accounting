@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +29,7 @@ import com.example.accounting.core.ui.theme.AccountingTypography
 
 /** Journal tab entry point. Collects the shared ViewModel and forwards actions. */
 @Composable
-fun JournalRoute(modifier: Modifier = Modifier) {
+fun JournalRoute(modifier: Modifier = Modifier, onManual: () -> Unit = {}) {
     val viewModel: LedgerViewModel = hiltViewModel()
     val years by viewModel.fiscalYears.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
@@ -46,6 +47,7 @@ fun JournalRoute(modifier: Modifier = Modifier) {
             onToChange = viewModel::onToTextChange,
             onQuery = viewModel::onJournalQuery,
             onOpen = viewModel::openDocument,
+            onManual = onManual,
         )
         DocumentDetailHost(viewModel)
     }
@@ -67,6 +69,7 @@ internal fun JournalListScreen(
     onToChange: (String) -> Unit,
     onQuery: (String) -> Unit,
     onOpen: (String) -> Unit,
+    onManual: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -81,6 +84,14 @@ internal fun JournalListScreen(
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.semantics { heading() },
             )
+        }
+        item(key = "manual") {
+            Button(
+                onClick = onManual,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.manual_open_action))
+            }
         }
         item(key = "search") {
             SearchField(

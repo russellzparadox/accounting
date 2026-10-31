@@ -5,7 +5,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import java.time.LocalDate
 
-/** Template ids, identical to docs/ACCOUNTING_RULES.md section 8. REVERSAL is not an intent type (see PostingEngine.reverse). */
+/**
+ * Template ids, identical to docs/ACCOUNTING_RULES.md section 8, plus two ids that are never intent types:
+ * REVERSAL (see PostingEngine.reverse) and MANUAL (free-form document, see ManualJournal.build).
+ */
 @Serializable
 enum class TemplateId {
     PURCHASE_CASH, PURCHASE_CREDIT,
@@ -16,6 +19,7 @@ enum class TemplateId {
     OWNER_CAPITAL, OWNER_WITHDRAWAL,
     PURCHASE_RETURN, SALE_RETURN,
     REVERSAL,
+    MANUAL,
 }
 
 @Serializable

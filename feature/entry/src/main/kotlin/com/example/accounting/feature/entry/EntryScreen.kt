@@ -54,10 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.accounting.core.persian.PersianDigits
+import com.example.accounting.core.domain.JournalEntry
 
 /** Hilt entry point. Collects [EntryViewModel.state] and forwards actions. Nothing else. */
 @Composable
-fun EntryRoute(modifier: Modifier = Modifier) {
+fun EntryRoute(modifier: Modifier = Modifier, onEditAsDocument: (JournalEntry) -> Unit = {}) {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val voiceModel: VoiceViewModel = hiltViewModel()
@@ -86,6 +87,7 @@ fun EntryRoute(modifier: Modifier = Modifier) {
         onVoiceAction = voiceModel::onAction,
         input = input,
         onInputChange = viewModel::onInputChange,
+        onEditAsDocument = onEditAsDocument,
     )
 }
 
@@ -104,6 +106,7 @@ fun EntryScreen(
     onVoiceAction: (VoiceAction) -> Unit = {},
     input: String = "",
     onInputChange: (String) -> Unit = {},
+    onEditAsDocument: (JournalEntry) -> Unit = {},
 ) {
     var showManual by rememberSaveable { mutableStateOf(false) }
     var showConfig by rememberSaveable { mutableStateOf(false) }
@@ -163,6 +166,7 @@ fun EntryScreen(
             accountName = accountName,
             onConfigure = { showConfig = true },
             onManualEntry = { showManual = true },
+            onEditAsDocument = onEditAsDocument,
             modifier = Modifier.padding(padding),
         )
     }
@@ -229,6 +233,7 @@ private fun ChatList(
     accountName: (String) -> String,
     onConfigure: () -> Unit,
     onManualEntry: () -> Unit,
+    onEditAsDocument: (JournalEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -252,6 +257,7 @@ private fun ChatList(
                 accountName = accountName,
                 onConfigure = onConfigure,
                 onManualEntry = onManualEntry,
+                onEditAsDocument = onEditAsDocument,
             )
         }
         if (state.busy) {
@@ -267,11 +273,17 @@ private fun ChatRow(
     accountName: (String) -> String,
     onConfigure: () -> Unit,
     onManualEntry: () -> Unit,
+    onEditAsDocument: (JournalEntry) -> Unit,
 ) {
     when (item) {
         is ChatItem.UserText -> UserBubble(item.text)
         is ChatItem.Clarification -> ClarificationBubble(item, onAction)
-        is ChatItem.DraftCard -> ConfirmationCard(card = item, onAction = onAction, accountName = accountName)
+        is ChatItem.DraftCard -> ConfirmationCard(
+            card = item,
+            onAction = onAction,
+            accountName = accountName,
+            onEditAsDocument = onEditAsDocument,
+        )
         is ChatItem.Error -> ErrorBubble(item, onAction, onConfigure, onManualEntry)
         is ChatItem.Committed -> CommittedBubble(item, onAction)
         is ChatItem.Reversed -> ReversedBubble(item)

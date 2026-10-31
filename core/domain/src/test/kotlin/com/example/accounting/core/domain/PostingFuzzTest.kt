@@ -17,7 +17,7 @@ class PostingFuzzTest {
     private val categoryTemplates = setOf(TemplateId.EXPENSE_PAID, TemplateId.EXPENSE_PAYABLE)
 
     private fun randomValid(rnd: Random): TransactionIntent {
-        val type = TemplateId.entries.filter { it != TemplateId.REVERSAL }.random(rnd)
+        val type = TemplateId.entries.filter { it != TemplateId.REVERSAL && it != TemplateId.MANUAL }.random(rnd)
         val paid = if (rnd.nextBoolean()) PaidWith.CASH else PaidWith.BANK
         val paidWith = when (type) {
             in creditTemplates -> null

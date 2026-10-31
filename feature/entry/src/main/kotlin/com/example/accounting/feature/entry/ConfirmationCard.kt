@@ -42,6 +42,7 @@ import com.example.accounting.core.persian.JalaliDate
 import com.example.accounting.core.persian.MoneyFormat
 import com.example.accounting.core.persian.PersianDigits
 import com.example.accounting.core.ui.theme.AccountingTypography
+import com.example.accounting.core.domain.JournalEntry
 
 /**
  * Editable draft card: amount hero, date, reasons, lines, Dr/Cr totals, actions.
@@ -52,6 +53,7 @@ fun ConfirmationCard(
     card: ChatItem.DraftCard,
     onAction: (EntryAction) -> Unit,
     accountName: (String) -> String,
+    onEditAsDocument: (JournalEntry) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var editing by rememberSaveable(card.id) { mutableStateOf(false) }
@@ -156,6 +158,14 @@ fun ConfirmationCard(
             modifier = FullWidthButtonModifier,
         ) {
             Text(stringResource(R.string.confirm_edit_action))
+        }
+        // Opens the free-form editor prefilled from this draft. Nothing is committed from here.
+        OutlinedButton(
+            onClick = { onEditAsDocument(entry) },
+            enabled = !card.committing,
+            modifier = FullWidthButtonModifier,
+        ) {
+            Text(stringResource(R.string.confirm_as_document))
         }
         TextButton(
             onClick = { onAction(EntryAction.Discard(card.id)) },
