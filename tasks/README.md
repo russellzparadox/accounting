@@ -22,11 +22,12 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T10 | ledger-ui | T04, T08 | done (fix rounds 1+2; final CI run 41194728898 success on 0f959e9; audit 20 MET, 3 PARTIAL, 0 NOT MET; see handouts/T10-ledger-ui.md) |
 | T10b | manual-journal-editor | T08, T10 | done (CI green run 102, build #102; D1+D3 carried to T12) |
 | T11 | reports | T10 | done (CI green run 109, build #109; PDF render unverified -> T13; unit setting -> T12) |
-| T12 | settings-onboarding | T08, T10b, T11 | partial (CI green run 41201166431 on 1587d63; device checks open; fiscal year not wired; D3 filter and quick sheet untested; see handouts/T12-settings-onboarding.md) |
+| T12 | settings-onboarding | T08, T10b, T11 | done (CI green run 115, build #115; follow-through in T12b) |
+| T12b | settings-follow-through | T12 | in_progress |
 | T13 | qa | T07, T08, T09, T10, T11, T12 | todo |
 | T14 | release-prep | T13 | todo |
 
 ## Run order
-T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T13 -> T14
+T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T12b -> T13 -> T14
 
 Files: `tasks/Txx-slug.md` (from `tasks/_TEMPLATE.md`), `handouts/Txx-slug.md` (from `handouts/_TEMPLATE.md`).
