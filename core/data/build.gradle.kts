@@ -26,6 +26,13 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// Debug and release KSP runs share the one schema folder above. With org.gradle.parallel=true and lint
+// analysing the release variant, both can run at once and one reads the other's half-written schema JSON
+// (CI 41194425401: kspDebugKotlin "Unexpected JSON token ... $.database.entities[3]"). Run them in sequence.
+tasks.matching { it.name == "kspReleaseKotlin" }.configureEach {
+    dependsOn("kspDebugKotlin")
+}
+
 dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:persian"))
