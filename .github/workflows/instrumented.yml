@@ -81,16 +81,25 @@ jobs:
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
 
-      # Last step on purpose: `get_job_logs` tail shows it first. Prints the Gradle failure lines and each failed
-      # androidTest case (name + first lines of the message). Full detail is in the uploaded artifacts.
+      # Last step on purpose. Each failure is also emitted as a ::error annotation, readable with the public
+      # check-run annotations API (the job log tail is often just post-job cleanup, so do not rely on it alone).
       - name: Failure summary (short, read this first)
         if: failure()
         run: |
-          echo "== gradle failure lines (qa-artifacts/gradle-instrumented.log) =="
-          grep -E '^e: |What went wrong|FAILED|Execution failed|Test run failed|Instrumented test' -A3 qa-artifacts/gradle-instrumented.log 2>/dev/null | head -60 || echo "no gradle log"
-          echo "== failed androidTest cases =="
           python3 - <<'PY' || true
-          import glob, xml.etree.ElementTree as ET
+          import glob, re, subprocess, xml.etree.ElementTree as ET
+          def esc(t):
+              return t.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print("== gradle failure lines ==")
+          try:
+              lines = open('qa-artifacts/gradle-instrumented.log', encoding='utf-8', errors='replace').read().splitlines()
+          except OSError:
+              lines = []
+          for i, line in enumerate(lines):
+              if re.match(r'^e: |FAILED|What went wrong|Execution failed|There were failing tests', line.strip()):
+                  print(line[:400])
+                  print(f"::error title=gradle::{esc(line.strip()[:800])}")
+          print("== failed androidTest cases ==")
           n = 0
           for f in sorted(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True)):
               try:
@@ -101,14 +110,14 @@ jobs:
               for tc in root.iter('testcase'):
                   for fl in list(tc.findall('failure')) + list(tc.findall('error')):
                       n += 1
-                      if n > 10:
-                          break
-                      msg = (fl.get('message') or '').splitlines()[:4]
-                      print(f"FAILED {tc.get('classname')}.{tc.get('name')}")
-                      for line in msg:
-                          print(f"  {line[:900]}")
+                      name = f"{tc.get('classname')}.{tc.get('name')}"
+                      msg = (fl.get('message') or '').strip()
+                      stack = '\n'.join((fl.text or '').splitlines()[:6])
+                      text = f"FAILED {name}: {msg}\n{stack}"
+                      print(text[:1200])
+                      print(f"::error title=androidTest FAILED {tc.get('name')}::{esc(text[:3000])}")
           print(f"total failed testcases: {n}")
           print("androidTest result files: " + str(len(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True))))
           PY
           echo "== qa-artifacts =="
-          find qa-artifacts -type f 2>/dev/null | sort | head -60 || true
+          find qa-artifacts -type f 2>/dev/null | sort | head -20 || true
