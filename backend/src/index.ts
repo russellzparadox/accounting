@@ -1,6 +1,7 @@
 import { ConfigError, loadConfig } from "./config.js";
 import { AnthropicLlmClient, type LlmClient } from "./llm.js";
 import { OpenAiLlmClient } from "./llm_openai.js";
+import { OpenAiSttClient, type SttClient } from "./stt.js";
 import { createLogger } from "./log.js";
 import { FixedWindowLimiter } from "./ratelimit.js";
 import { createApp } from "./server.js";
@@ -30,12 +31,24 @@ const llm: LlmClient = cfg.provider === "openai"
   })
   : new AnthropicLlmClient({ apiKey: cfg.apiKey!, model: cfg.model });
 
+const stt: SttClient | undefined = cfg.sttBaseUrl
+  ? new OpenAiSttClient({
+    baseUrl: cfg.sttBaseUrl,
+    model: cfg.sttModel,
+    apiKey: cfg.sttApiKey,
+    timeoutMs: cfg.sttTimeoutMs,
+  })
+  : undefined;
+
 const logger = createLogger({ logText: cfg.logText });
 const app = createApp({
   llm,
+  stt,
   tokens: cfg.tokens,
   limiter: new FixedWindowLimiter(cfg.rateLimitPerMin, 60_000),
   logger,
   model: cfg.model,
 });
-app.listen(cfg.port, () => logger.info("listening", { port: cfg.port, provider: cfg.provider, model: cfg.model }));
+app.listen(cfg.port, () => logger.info("listening", {
+  port: cfg.port, provider: cfg.provider, model: cfg.model, stt: stt !== undefined,
+}));

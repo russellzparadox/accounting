@@ -9,6 +9,9 @@ import {
   completionBody, completionId, modelsBody, OPENAI_MAX_BODY_BYTES, oaError, type OpenAiError,
   parseChatRequest, streamBody,
 } from "./openai_compat.js";
+import {
+  parseTranscription, readMultipart, SttTransportError, STT_MAX_BODY_BYTES, type SttClient,
+} from "./stt.js";
 import { validateText } from "./text.js";
 
 export { MAX_TEXT_CHARS } from "./text.js";
@@ -22,6 +25,8 @@ export interface AppDeps {
   now?: () => Date;
   /** Model id echoed by /v1/chat/completions when the request names none, and listed by /v1/models. */
   model?: string;
+  /** Speech-to-text upstream. Undefined = /v1/audio/transcriptions answers 501 not_configured. */
+  stt?: SttClient;
 }
 
 /** Calendar date in Asia/Tehran, yyyy-MM-dd. Relative Persian dates resolve against this. */
@@ -50,6 +55,19 @@ async function readBody(req: IncomingMessage, limit: number): Promise<string | n
     chunks.push(b);
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+/** Raw body bytes, or null when the body exceeds `limit`. */
+async function readBytes(req: IncomingMessage, limit: number): Promise<Buffer | null> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const b = chunk as Buffer;
+    total += b.length;
+    if (total > limit) return null;
+    chunks.push(b);
+  }
+  return Buffer.concat(chunks);
 }
 
 /** Accepts exactly {"text": "<non-empty string, <= MAX_TEXT_CHARS code points>"}. Returns trimmed text or null. */
@@ -135,6 +153,71 @@ export function createApp(deps: AppDeps): Server {
     }
   }
 
+  /** POST /v1/audio/transcriptions. Audio and transcript are never logged (text only with DEBUG_LOG_TEXT=1). */
+  async function transcriptions(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const started = Date.now();
+    if (req.method !== "POST") {
+      return sendOpenAi(res, oaError(405, "invalid_request_error", "method_not_allowed", "Use POST.", null, { allow: "POST" }));
+    }
+    const key = openAiAuth(req, res);
+    if (key === null) return;
+    if (!deps.stt) {
+      return sendOpenAi(res, oaError(501, "server_error", "not_configured",
+        "Speech-to-text is not configured on this server. Set STT_BASE_URL."));
+    }
+
+    const rl = deps.limiter.check(key);
+    if (!rl.allowed) {
+      logger.info("rate_limited", { status: 429, key });
+      return sendOpenAi(res, oaError(429, "requests", "rate_limit_exceeded",
+        "Rate limit reached for requests.", null, { "retry-after": String(rl.retryAfterSec) }));
+    }
+
+    const raw = await readBytes(req, STT_MAX_BODY_BYTES);
+    if (raw === null) {
+      return sendOpenAi(res, oaError(413, "invalid_request_error", "request_too_large", "Request body is too large."));
+    }
+    const form = await readMultipart(raw, req.headers["content-type"]);
+    if (form === null) {
+      return sendOpenAi(res, oaError(400, "invalid_request_error", "invalid_multipart",
+        "Expected a multipart/form-data body."));
+    }
+    const parsed = await parseTranscription(form);
+    if (!parsed.ok) return sendOpenAi(res, parsed.err);
+
+    const { value, bytes } = parsed;
+    try {
+      const out = await deps.stt.transcribe(value);
+      logger.info("stt", {
+        status: 200, outcome: "ok", format: value.format, bytes, key, ms: Date.now() - started, text: out.text,
+      });
+      if (value.format === "text") {
+        res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
+        return void res.end(out.text);
+      }
+      return send(res, 200, value.format === "verbose_json" ? { ...out.verbose, text: out.text } : { text: out.text });
+    } catch (e) {
+      const reason = e instanceof SttTransportError ? e.code : "unexpected";
+      const upstream = e instanceof SttTransportError && e.status !== undefined ? e.status : null;
+      logger.info("stt_failed", {
+        status: e instanceof SttTransportError && e.code === "stt_rate_limited" ? 429
+          : e instanceof SttTransportError && e.code === "stt_bad_audio" ? 400 : 502,
+        reason, error: e instanceof Error ? e.name : "unknown", upstream_status: upstream, key,
+        bytes, ms: Date.now() - started,
+      });
+      if (e instanceof SttTransportError && e.code === "stt_rate_limited") {
+        return sendOpenAi(res, oaError(429, "requests", "rate_limit_exceeded",
+          "The speech provider is rate limited. Try again shortly."));
+      }
+      if (e instanceof SttTransportError && e.code === "stt_bad_audio") {
+        return sendOpenAi(res, oaError(400, "invalid_request_error", "invalid_audio",
+          "The speech provider could not decode this audio."));
+      }
+      return sendOpenAi(res, oaError(502, "server_error", "stt_unavailable",
+        "The speech provider failed to return a transcript."));
+    }
+  }
+
   async function models(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (req.method !== "GET") {
       return sendOpenAi(res, oaError(405, "invalid_request_error", "method_not_allowed", "Use GET.", null, { allow: "GET" }));
@@ -153,6 +236,7 @@ export function createApp(deps: AppDeps): Server {
     }
     if (path === "/v1/chat/completions") return chatCompletions(req, res);
     if (path === "/v1/models") return models(req, res);
+    if (path === "/v1/audio/transcriptions") return transcriptions(req, res);
     if (path !== "/v1/parse") return send(res, 404, { error: "not_found" });
     if (req.method !== "POST") return send(res, 405, { error: "method_not_allowed" }, { allow: "POST" });
 
@@ -207,7 +291,7 @@ export function createApp(deps: AppDeps): Server {
       logger.info("internal_error", { status: 500 });
       if (!res.headersSent) {
         const p = new URL(req.url ?? "/", "http://localhost").pathname;
-        if (p.startsWith("/v1/chat/") || p === "/v1/models") {
+        if (p.startsWith("/v1/chat/") || p === "/v1/models" || p === "/v1/audio/transcriptions") {
           sendOpenAi(res, oaError(500, "server_error", "internal", "Internal error."));
         } else {
           send(res, 500, { error: "internal" });
