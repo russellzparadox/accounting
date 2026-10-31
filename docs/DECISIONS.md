@@ -5,3 +5,8 @@
 - D4 Scope v1: small-business double-entry; no VAT/payroll/per-item inventory.
 - D5 Money stored as integer rial.
 - D6 One haiku/medium subagent at a time; handouts are the only inter-task channel.
+- D7 (user) Purchases use periodic system: Dr خرید 5100, not موجودی کالا 1400.
+- D8 (user) Customers/suppliers: auto-create a معین per person under 1300 / 2100 (find-or-create by normalized name).
+- D9 (user) Fiscal year default = Jalali year, 1 فروردین to end of اسفند; configurable later (T12).
+- D10 Chart of accounts + 14 template ids in T02 are a proposal; accountant review pending (see handouts/T02).
+- D11 core:domain becomes a pure Kotlin/JVM module so tests run without Android SDK (T03).
