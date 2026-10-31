@@ -1,5 +1,5 @@
 # T09 — voice-input
-Status: in_progress
+Status: partial
 Depends: T08
 Read first: CLAUDE.md, handouts/T08-entry-ui.md
 Skills to invoke: design:ux-copy, persian-writing:persian-writing
