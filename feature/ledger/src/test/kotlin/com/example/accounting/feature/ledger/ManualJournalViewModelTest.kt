@@ -146,14 +146,14 @@ class ManualJournalViewModelTest {
         vm.onAction(ManualAction.SetAmount(rows[1].id, "300000"))
         awaitValue({ vm.ui.value }) { it.canSave }
 
-        // Nothing is persisted before the user saves.
-        assertTrue(runBlocking { ledger.accounts().first() }.none { it.parent == "1300" })
+        // Nothing is persisted before the user saves. (The chart seeds a sample customer 1301 under 1300, so match by name.)
+        assertTrue(runBlocking { ledger.accounts().first() }.none { it.nameFa == "علی رضایی" })
 
         vm.onAction(ManualAction.Save)
         val saved = awaitValue({ vm.ui.value }) { it.savedDocNumber != null }
         assertEquals(1, saved.savedDocNumber)
-        val party = runBlocking { ledger.accounts().first() }.single { it.parent == "1300" }
-        assertEquals("علی رضایی", party.nameFa)
+        val party = runBlocking { ledger.accounts().first() }.single { it.nameFa == "علی رضایی" }
+        assertEquals("1300", party.parent)
         assertEquals(AccountLevel.DETAIL, party.level)
         assertTrue(committedDocs().single().entry.lines.any { it.accountCode == party.code && it.side == Side.DEBIT })
     }
