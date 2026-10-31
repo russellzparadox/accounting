@@ -1,5 +1,5 @@
 # T07 — nl-pipeline
-Status: in_progress
+Status: done
 Depends: T03, T04, T05, T06
 Read first: CLAUDE.md, handouts/T03-domain-core.md, handouts/T05-persian-utils.md, handouts/T06-backend-llm-proxy.md
 Skills to invoke: none
