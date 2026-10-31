@@ -1,5 +1,7 @@
 package com.example.accounting.feature.entry
 
+import com.example.accounting.core.persian.AmountInput
+import com.example.accounting.core.persian.AmountUnit
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,6 +55,7 @@ private val TEMPLATE_CHOICES = listOf(
 fun ManualEntrySheet(
     onDismiss: () -> Unit,
     onSubmit: (EntryAction.SubmitManual) -> Unit,
+    amountUnit: AmountUnit = AmountUnit.TOMAN,
 ) {
     val sheetState = rememberModalBottomSheetState()
     var template by rememberSaveable { mutableStateOf(TemplateId.PURCHASE_CASH) }
@@ -62,7 +65,7 @@ fun ManualEntrySheet(
     var party by rememberSaveable { mutableStateOf("") }
     var memo by rememberSaveable { mutableStateOf("") }
 
-    val amountRial = parseTomanInput(amountText)
+    val amountRial = AmountInput.parseRial(amountText, amountUnit)
     val needsParty = template == TemplateId.PURCHASE_CREDIT || template == TemplateId.SALE_CREDIT
     val hasPaidWith = template == TemplateId.PURCHASE_CASH ||
         template == TemplateId.SALE_CASH ||
@@ -97,7 +100,13 @@ fun ManualEntrySheet(
                 value = amountText,
                 onValueChange = { amountText = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.amount_field_label)) },
+                label = {
+                    Text(
+                        stringResource(
+                            if (amountUnit == AmountUnit.RIAL) R.string.amount_field_label_rial else R.string.amount_field_label,
+                        ),
+                    )
+                },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             )

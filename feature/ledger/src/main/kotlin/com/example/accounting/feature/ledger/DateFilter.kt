@@ -9,6 +9,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.accounting.core.persian.JalaliDate
 import com.example.accounting.core.persian.PersianDigits
+import com.example.accounting.core.ui.components.JalaliDatePickerDialog
 import java.time.LocalDate
 
 /** Date presets. Ranges are Jalali months (or the whole fiscal year). CUSTOM uses the typed dates. */
@@ -108,6 +114,8 @@ fun DateFilterBar(
             }
         }
         if (preset == DatePreset.CUSTOM) {
+            var pickFrom by rememberSaveable { mutableStateOf(false) }
+            var pickTo by rememberSaveable { mutableStateOf(false) }
             OutlinedTextField(
                 value = fromText,
                 onValueChange = onFromChange,
@@ -119,6 +127,9 @@ fun DateFilterBar(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle = MaterialTheme.typography.bodyLarge,
             )
+            TextButton(onClick = { pickFrom = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.range_pick_calendar))
+            }
             OutlinedTextField(
                 value = toText,
                 onValueChange = onToChange,
@@ -130,6 +141,31 @@ fun DateFilterBar(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 textStyle = MaterialTheme.typography.bodyLarge,
             )
+            TextButton(onClick = { pickTo = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.range_pick_calendar))
+            }
+            if (pickFrom) {
+                JalaliDatePickerDialog(
+                    initial = pickerInitial(fromText),
+                    title = stringResource(R.string.range_from_label),
+                    onConfirm = {
+                        onFromChange(it.toString())
+                        pickFrom = false
+                    },
+                    onDismiss = { pickFrom = false },
+                )
+            }
+            if (pickTo) {
+                JalaliDatePickerDialog(
+                    initial = pickerInitial(toText),
+                    title = stringResource(R.string.range_to_label),
+                    onConfirm = {
+                        onToChange(it.toString())
+                        pickTo = false
+                    },
+                    onDismiss = { pickTo = false },
+                )
+            }
             if (dateError) {
                 Text(
                     text = stringResource(R.string.range_error),
@@ -140,3 +176,7 @@ fun DateFilterBar(
         }
     }
 }
+
+/** Calendar starting point: the typed date when it parses, otherwise today. */
+private fun pickerInitial(text: String): JalaliDate =
+    parseJalaliInput(text)?.let { JalaliDate.from(it) } ?: JalaliDate.from(LocalDate.now())

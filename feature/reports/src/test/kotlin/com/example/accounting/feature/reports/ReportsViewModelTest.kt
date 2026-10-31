@@ -3,6 +3,8 @@ package com.example.accounting.feature.reports
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.example.accounting.core.data.db.AppDatabase
+import android.content.Context
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.seed.ChartSeeder
 import com.example.accounting.core.domain.JournalEntry
@@ -10,6 +12,8 @@ import com.example.accounting.core.domain.JournalLine
 import com.example.accounting.core.domain.Money
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.domain.TemplateId
+import com.example.accounting.core.domain.report.CsvWriter
+import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.domain.report.ReportCell
 import com.example.accounting.core.persian.JalaliDate
 import com.example.accounting.feature.ledger.DatePreset
@@ -37,6 +41,7 @@ class ReportsViewModelTest {
     private lateinit var db: AppDatabase
     private lateinit var ledger: LedgerRepository
     private lateinit var vm: ReportsViewModel
+    private lateinit var settings: SettingsRepository
     private val clock: Clock = Clock.fixed(Instant.parse("2026-10-31T07:30:00Z"), ZoneId.of("Asia/Tehran"))
 
     private val oct1 = LocalDate.of(2026, 10, 1)
@@ -44,13 +49,15 @@ class ReportsViewModelTest {
 
     @Before
     fun setUp() = runBlocking {
-        db = AppDatabase.inMemory(ApplicationProvider.getApplicationContext())
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = AppDatabase.inMemory(context)
         ChartSeeder(db).seed()
         ledger = LedgerRepository(db)
         ledger.ensureFiscalYear(1405)
         ledger.commit(cashSale(oct1, 1_000))
         ledger.commit(cashSale(oct15, 300))
-        vm = ReportsViewModel(ledger, clock)
+        settings = SettingsRepository(context)
+        vm = ReportsViewModel(ledger, clock, settings)
     }
 
     @After
@@ -88,6 +95,20 @@ class ReportsViewModelTest {
         assertTrue(table.balanced)
         assertEquals(1_300L, amount(requireNotNull(table.totals)[2]))
         assertEquals(1_300L, amount(table.totals!![3]))
+    }
+
+    @Test
+    fun switchingSettingsToRialChangesReportUnitAndCsvValues() {
+        val toman = requireNotNull(awaitUi { it.table != null }.table)
+        assertEquals(AmountUnit.TOMAN, toman.unit)
+        val tomanCsv = CsvWriter.write(toman)
+        assertTrue(tomanCsv.contains("130") && !tomanCsv.contains("1300"))
+
+        settings.setAmountUnit(AmountUnit.RIAL)
+        val rial = requireNotNull(awaitUi { it.table != null && it.table.unit == AmountUnit.RIAL }.table)
+        // Cells keep rial; only the unit and the rendering change.
+        assertEquals(1_300L, amount(requireNotNull(rial.totals)[2]))
+        assertTrue(CsvWriter.write(rial).contains("1300"))
     }
 
     @Test

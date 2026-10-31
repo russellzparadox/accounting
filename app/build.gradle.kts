@@ -29,6 +29,8 @@ android {
 
     buildFeatures {
         compose = true
+        // Version name and build number for the settings About section.
+        buildConfig = true
     }
 }
 

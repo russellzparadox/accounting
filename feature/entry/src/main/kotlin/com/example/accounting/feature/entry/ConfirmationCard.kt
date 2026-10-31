@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.example.accounting.core.domain.JournalLine
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.domain.pipeline.ConfirmReason
+import com.example.accounting.core.persian.AmountInput
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
 import com.example.accounting.core.persian.MoneyFormat
@@ -54,12 +55,13 @@ fun ConfirmationCard(
     onAction: (EntryAction) -> Unit,
     accountName: (String) -> String,
     onEditAsDocument: (JournalEntry) -> Unit = {},
+    amountUnit: AmountUnit = AmountUnit.TOMAN,
     modifier: Modifier = Modifier,
 ) {
     var editing by rememberSaveable(card.id) { mutableStateOf(false) }
     val entry = card.entry
-    val debit = MoneyFormat.format(entry.debitTotal.rial, AmountUnit.TOMAN)
-    val credit = MoneyFormat.format(entry.creditTotal.rial, AmountUnit.TOMAN)
+    val debit = MoneyFormat.format(entry.debitTotal.rial, amountUnit)
+    val credit = MoneyFormat.format(entry.creditTotal.rial, amountUnit)
     val debitTotalText = stringResource(R.string.confirm_debit_total, debit)
     val creditTotalText = stringResource(R.string.confirm_credit_total, credit)
     val hasMismatch = card.reasons.any { it is ConfirmReason.AmountMismatch }
@@ -108,7 +110,7 @@ fun ConfirmationCard(
 
         HorizontalDivider()
         entry.lines.forEach { line ->
-            LineRow(line = line, name = accountName(line.accountCode))
+            LineRow(line = line, name = accountName(line.accountCode), unit = amountUnit)
         }
         HorizontalDivider()
         Text(
@@ -179,6 +181,7 @@ fun ConfirmationCard(
     if (editing) {
         EditAmountDialog(
             initialRial = entry.debitTotal.rial,
+            unit = amountUnit,
             onDismiss = { editing = false },
             onSave = { rial ->
                 editing = false
@@ -189,9 +192,9 @@ fun ConfirmationCard(
 }
 
 @Composable
-private fun LineRow(line: JournalLine, name: String) {
+private fun LineRow(line: JournalLine, name: String, unit: AmountUnit) {
     val sideText = stringResource(if (line.side == Side.DEBIT) R.string.side_debit else R.string.side_credit)
-    val amount = MoneyFormat.format(line.amount.rial, AmountUnit.TOMAN)
+    val amount = MoneyFormat.format(line.amount.rial, unit)
     val description = stringResource(R.string.amount_cd, amount, sideText)
     Row(
         modifier = Modifier
@@ -222,23 +225,34 @@ private fun LineRow(line: JournalLine, name: String) {
 }
 
 @Composable
-private fun EditAmountDialog(initialRial: Long, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
-    var text by rememberSaveable { mutableStateOf(PersianDigits.toPersian((initialRial / 10L).toString())) }
-    val parsed = parseTomanInput(text)
+private fun EditAmountDialog(initialRial: Long, unit: AmountUnit, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
+    // Prefill only when the value can be typed exactly in this unit. Otherwise the field starts empty (never truncated).
+    var text by rememberSaveable {
+        mutableStateOf(AmountInput.toInputText(initialRial, unit)?.let { PersianDigits.toPersian(it) }.orEmpty())
+    }
+    val parsed = AmountInput.parseRial(text, unit)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.edit_amount_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = stringResource(R.string.edit_amount_body),
+                    text = stringResource(
+                        if (unit == AmountUnit.RIAL) R.string.edit_amount_body_rial else R.string.edit_amount_body,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.amount_field_label)) },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (unit == AmountUnit.RIAL) R.string.amount_field_label_rial else R.string.amount_field_label,
+                            ),
+                        )
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
@@ -259,13 +273,3 @@ private fun EditAmountDialog(initialRial: Long, onDismiss: () -> Unit, onSave: (
         },
     )
 }
-
-/** Toman text (Persian or Latin digits, separators ignored) to rial. Null when empty, zero or too long. */
-internal fun parseTomanInput(text: String): Long? {
-    val digits = PersianDigits.toLatin(text.trim()).filter { it in '0'..'9' }
-    if (digits.isEmpty() || digits.length > MAX_TOMAN_DIGITS) return null
-    val toman = digits.toLongOrNull() ?: return null
-    return if (toman > 0L) toman * 10L else null
-}
-
-private const val MAX_TOMAN_DIGITS = 14

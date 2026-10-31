@@ -80,7 +80,9 @@
     <string name="confirm_edit_action">ویرایش مبلغ</string>
     <string name="edit_amount_title">ویرایش مبلغ</string>
     <string name="edit_amount_body">مبلغ را به تومان وارد کنید. تا وقتی تأیید نکرده‌اید، چیزی ثبت نمی‌شود.</string>
+    <string name="edit_amount_body_rial">مبلغ را به ریال وارد کنید. تا وقتی تأیید نکرده‌اید، چیزی ثبت نمی‌شود.</string>
     <string name="amount_field_label">مبلغ (تومان)</string>
+    <string name="amount_field_label_rial">مبلغ (ریال)</string>
     <string name="action_save">ذخیره</string>
 
     <!-- Clarification bubble. -->
@@ -120,4 +122,5 @@
     <string name="config_hide">پنهان کردن</string>
     <string name="config_save">ذخیره</string>
     <string name="confirm_as_document">ویرایش به صورت سند</string>
+    <string name="action_settings">تنظیمات</string>
 </resources>

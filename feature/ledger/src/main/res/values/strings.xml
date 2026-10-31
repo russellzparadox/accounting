@@ -107,4 +107,10 @@
     <string name="manual_picker_empty_body">نام تازه‌ای بنویسید تا مشتری یا تأمین‌کننده‌ی جدید بسازید.</string>
     <string name="manual_add_customer">افزودن «%1$s» به عنوان مشتری</string>
     <string name="manual_add_supplier">افزودن «%1$s» به عنوان تأمین‌کننده</string>
+    <string name="manual_amount_label_rial">مبلغ (ریال)</string>
+    <string name="manual_amount_hint_rial">مثلاً ۵٬۰۰۰٬۰۰۰</string>
+    <string name="manual_amount_invalid_rial">مبلغ را به ریال و بیشتر از صفر بنویسید.</string>
+    <string name="manual_pick_date_button">انتخاب از تقویم</string>
+    <string name="manual_date_picker_title">تاریخ سند</string>
+    <string name="range_pick_calendar">انتخاب از تقویم</string>
 </resources>

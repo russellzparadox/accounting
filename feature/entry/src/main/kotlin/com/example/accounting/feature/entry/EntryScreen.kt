@@ -53,17 +53,23 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.PersianDigits
 import com.example.accounting.core.domain.JournalEntry
 
 /** Hilt entry point. Collects [EntryViewModel.state] and forwards actions. Nothing else. */
 @Composable
-fun EntryRoute(modifier: Modifier = Modifier, onEditAsDocument: (JournalEntry) -> Unit = {}) {
+fun EntryRoute(
+    modifier: Modifier = Modifier,
+    onEditAsDocument: (JournalEntry) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+) {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val voiceModel: VoiceViewModel = hiltViewModel()
     val voice by voiceModel.state.collectAsStateWithLifecycle()
     val input by viewModel.input.collectAsStateWithLifecycle()
+    val amountUnit by viewModel.amountUnit.collectAsStateWithLifecycle()
     // Recognized text fills the field. It is never sent here: the user taps send. Re-entering the tab re-delivers the
     // last transcript; EntryViewModel ignores it because its seq was already applied.
     LaunchedEffect(voice.transcript) {
@@ -88,6 +94,8 @@ fun EntryRoute(modifier: Modifier = Modifier, onEditAsDocument: (JournalEntry) -
         input = input,
         onInputChange = viewModel::onInputChange,
         onEditAsDocument = onEditAsDocument,
+        amountUnit = amountUnit,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -107,6 +115,8 @@ fun EntryScreen(
     input: String = "",
     onInputChange: (String) -> Unit = {},
     onEditAsDocument: (JournalEntry) -> Unit = {},
+    amountUnit: AmountUnit = AmountUnit.TOMAN,
+    onOpenSettings: () -> Unit = {},
 ) {
     var showManual by rememberSaveable { mutableStateOf(false) }
     var showConfig by rememberSaveable { mutableStateOf(false) }
@@ -142,7 +152,7 @@ fun EntryScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { EntryTopBar(onManualEntry = { showManual = true }) },
+        topBar = { EntryTopBar(onManualEntry = { showManual = true }, onOpenSettings = onOpenSettings) },
         bottomBar = {
             ChatInputBar(
                 text = input,
@@ -167,6 +177,7 @@ fun EntryScreen(
             onConfigure = { showConfig = true },
             onManualEntry = { showManual = true },
             onEditAsDocument = onEditAsDocument,
+            amountUnit = amountUnit,
             modifier = Modifier.padding(padding),
         )
     }
@@ -178,6 +189,7 @@ fun EntryScreen(
                 onAction(action)
                 showManual = false
             },
+            amountUnit = amountUnit,
         )
     }
     micSheet?.let { sheet ->
@@ -206,7 +218,7 @@ fun EntryScreen(
 }
 
 @Composable
-private fun EntryTopBar(onManualEntry: () -> Unit) {
+private fun EntryTopBar(onManualEntry: () -> Unit, onOpenSettings: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,8 +232,13 @@ private fun EntryTopBar(onManualEntry: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.semantics { heading() },
         )
-        TextButton(onClick = onManualEntry, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(text = stringResource(R.string.action_manual_entry), style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(onClick = onOpenSettings, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(text = stringResource(R.string.action_settings), style = MaterialTheme.typography.labelLarge)
+            }
+            TextButton(onClick = onManualEntry, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(text = stringResource(R.string.action_manual_entry), style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }
@@ -234,6 +251,7 @@ private fun ChatList(
     onConfigure: () -> Unit,
     onManualEntry: () -> Unit,
     onEditAsDocument: (JournalEntry) -> Unit,
+    amountUnit: AmountUnit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -258,6 +276,7 @@ private fun ChatList(
                 onConfigure = onConfigure,
                 onManualEntry = onManualEntry,
                 onEditAsDocument = onEditAsDocument,
+                amountUnit = amountUnit,
             )
         }
         if (state.busy) {
@@ -274,6 +293,7 @@ private fun ChatRow(
     onConfigure: () -> Unit,
     onManualEntry: () -> Unit,
     onEditAsDocument: (JournalEntry) -> Unit,
+    amountUnit: AmountUnit,
 ) {
     when (item) {
         is ChatItem.UserText -> UserBubble(item.text)
@@ -283,6 +303,7 @@ private fun ChatRow(
             onAction = onAction,
             accountName = accountName,
             onEditAsDocument = onEditAsDocument,
+            amountUnit = amountUnit,
         )
         is ChatItem.Error -> ErrorBubble(item, onAction, onConfigure, onManualEntry)
         is ChatItem.Committed -> CommittedBubble(item, onAction)

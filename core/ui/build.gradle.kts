@@ -22,6 +22,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":core:persian"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

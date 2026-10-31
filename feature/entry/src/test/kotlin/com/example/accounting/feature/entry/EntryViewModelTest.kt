@@ -3,6 +3,7 @@ package com.example.accounting.feature.entry
 import androidx.test.core.app.ApplicationProvider
 import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.db.AppDatabase
 import com.example.accounting.core.data.nlp.NlParserProvider
 import com.example.accounting.core.data.repo.LedgerRepository
@@ -60,7 +61,7 @@ class EntryViewModelTest {
         chart = ChartOfAccounts.standard()
         ledger = LedgerRepository(db, chart)
         parties = PartyRepository(db)
-        configStore = ConfigStore(context)
+        configStore = ConfigStore(context, FakeTokenCipher)
     }
 
     @After
@@ -77,6 +78,7 @@ class EntryViewModelTest {
         configStore = configStore,
         parserProvider = FixedProvider(parser),
         clock = clock,
+        settings = SettingsRepository(context),
     )
 
     private fun configure() = configStore.save(BackendConfig("https://backend.test", "test-token"))

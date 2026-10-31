@@ -1,4 +1,7 @@
 package com.example.accounting.feature.ledger
+import com.example.accounting.core.ui.R as UiR
+import com.example.accounting.core.ui.components.JALALI_DAY_TAG_PREFIX
+import androidx.compose.ui.test.onNodeWithTag
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
@@ -63,6 +66,33 @@ class ManualJournalScreenTest {
         savedDocNumber = null,
         error = null,
     )
+
+    @Test
+    fun rialUnitShowsTotalsInRial() {
+        val check = ManualCheck(emptySet(), debitRial = 5_000_000L, creditRial = 5_000_000L)
+        compose.setContent {
+            ManualJournalScreen(ui = ui(check).copy(unit = AmountUnit.RIAL), onAction = {}, onClose = {})
+        }
+        compose.onNodeWithText(str(R.string.manual_total_debit, MoneyFormat.format(5_000_000L, AmountUnit.RIAL)))
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun calendarPickerWritesTheChosenJalaliDateIntoTheField() {
+        val check = ManualCheck(emptySet(), debitRial = 0L, creditRial = 0L)
+        var picked: String? = null
+        compose.setContent {
+            ManualJournalScreen(
+                ui = ui(check),
+                onAction = { if (it is ManualAction.SetDate) picked = it.text },
+                onClose = {},
+            )
+        }
+        compose.onNodeWithText(str(R.string.manual_pick_date_button)).performClick()
+        compose.onNodeWithTag(JALALI_DAY_TAG_PREFIX + "15").performClick()
+        compose.onNodeWithText(str(UiR.string.picker_confirm)).performClick()
+        assertEquals("۱۴۰۴/۱۰/۱۵", picked)
+    }
 
     @Test
     fun unbalancedDocumentShowsDifferenceAndSaveIsDisabled() {

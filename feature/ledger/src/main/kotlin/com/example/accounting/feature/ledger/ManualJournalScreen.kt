@@ -28,6 +28,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,6 +47,11 @@ import com.example.accounting.core.domain.JournalEntry
 import com.example.accounting.core.domain.ManualIssue
 import com.example.accounting.core.domain.PartyKind
 import com.example.accounting.core.domain.Side
+import com.example.accounting.core.persian.AmountUnit
+import com.example.accounting.core.persian.JalaliDate
+import com.example.accounting.core.persian.MoneyFormat
+import com.example.accounting.core.ui.components.JalaliDatePickerDialog
+import java.time.LocalDate
 import kotlin.math.abs
 
 /**
@@ -116,16 +124,35 @@ private fun ManualForm(
                 !ui.dateYearOpen -> stringResource(R.string.manual_year_closed, persianNumber(ui.dateYear ?: 0))
                 else -> stringResource(R.string.manual_date_hint)
             }
-            OutlinedTextField(
-                value = ui.dateText,
-                onValueChange = { onAction(ManualAction.SetDate(it)) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.manual_date_label)) },
-                singleLine = true,
-                isError = !ui.dateValid || !ui.dateYearOpen,
-                supportingText = { Text(message) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
+            var showDatePicker by rememberSaveable { mutableStateOf(false) }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedTextField(
+                    value = ui.dateText,
+                    onValueChange = { onAction(ManualAction.SetDate(it)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text(stringResource(R.string.manual_date_label)) },
+                    singleLine = true,
+                    isError = !ui.dateValid || !ui.dateYearOpen,
+                    supportingText = { Text(message) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                // Text stays the primary input; the calendar is an alternative that writes the same text.
+                TextButton(onClick = { showDatePicker = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.manual_pick_date_button))
+                }
+            }
+            if (showDatePicker) {
+                JalaliDatePickerDialog(
+                    initial = parseJalaliInput(ui.dateText)?.let { JalaliDate.from(it) }
+                        ?: JalaliDate.from(LocalDate.now()),
+                    title = stringResource(R.string.manual_date_picker_title),
+                    onConfirm = {
+                        onAction(ManualAction.SetDate(it.toString()))
+                        showDatePicker = false
+                    },
+                    onDismiss = { showDatePicker = false },
+                )
+            }
         }
         item(key = "memo") {
             OutlinedTextField(
@@ -137,7 +164,7 @@ private fun ManualForm(
             )
         }
         itemsIndexed(items = ui.rows, key = { _, row -> row.id }) { index, row ->
-            ManualLineRow(index = index, row = row, onAction = onAction)
+            ManualLineRow(index = index, row = row, unit = ui.unit, onAction = onAction)
         }
         item(key = "add") {
             OutlinedButton(
@@ -151,12 +178,12 @@ private fun ManualForm(
             val balanced = ManualIssue.UNBALANCED !in ui.check.issues
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.manual_total_debit, tomanText(ui.check.debitRial)),
+                    text = stringResource(R.string.manual_total_debit, moneyText(ui.check.debitRial, ui.unit)),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = stringResource(R.string.manual_total_credit, tomanText(ui.check.creditRial)),
+                    text = stringResource(R.string.manual_total_credit, moneyText(ui.check.creditRial, ui.unit)),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -164,7 +191,7 @@ private fun ManualForm(
                     text = if (balanced) {
                         stringResource(R.string.manual_balanced)
                     } else {
-                        stringResource(R.string.manual_difference, tomanText(abs(ui.check.differenceRial)))
+                        stringResource(R.string.manual_difference, moneyText(abs(ui.check.differenceRial), ui.unit))
                     },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -215,7 +242,7 @@ private fun ManualForm(
 }
 
 @Composable
-private fun ManualLineRow(index: Int, row: ManualRowUi, onAction: (ManualAction) -> Unit) {
+private fun ManualLineRow(index: Int, row: ManualRowUi, unit: AmountUnit, onAction: (ManualAction) -> Unit) {
     val amountProblem = row.amountText.isNotBlank() && !row.amountValid
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -262,13 +289,24 @@ private fun ManualLineRow(index: Int, row: ManualRowUi, onAction: (ManualAction)
             value = row.amountText,
             onValueChange = { onAction(ManualAction.SetAmount(row.id, it)) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.manual_amount_label)) },
+            label = {
+                Text(
+                    stringResource(
+                        if (unit == AmountUnit.RIAL) R.string.manual_amount_label_rial else R.string.manual_amount_label,
+                    ),
+                )
+            },
             singleLine = true,
             isError = amountProblem,
             supportingText = {
                 Text(
                     stringResource(
-                        if (amountProblem) R.string.manual_amount_invalid else R.string.manual_amount_hint,
+                        when {
+                            amountProblem && unit == AmountUnit.RIAL -> R.string.manual_amount_invalid_rial
+                            amountProblem -> R.string.manual_amount_invalid
+                            unit == AmountUnit.RIAL -> R.string.manual_amount_hint_rial
+                            else -> R.string.manual_amount_hint
+                        },
                     ),
                 )
             },
@@ -394,3 +432,6 @@ private fun issueText(issue: ManualIssue): Int = when (issue) {
     ManualIssue.PARTY_NAME_MISSING -> R.string.manual_issue_party_name
     ManualIssue.UNBALANCED -> R.string.manual_issue_unbalanced
 }
+
+/** Money text in the unit from settings (toman by default). Stateless. */
+private fun moneyText(rial: Long, unit: AmountUnit): String = MoneyFormat.format(rial, unit)

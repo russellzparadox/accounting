@@ -4,7 +4,9 @@ import android.content.Context
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.example.accounting.core.data.db.AppDatabase
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.repo.LedgerRepository
+import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.data.repo.PartyRepository
 import com.example.accounting.core.data.seed.ChartSeeder
 import com.example.accounting.core.domain.AccountLevel
@@ -67,7 +69,27 @@ class ManualJournalViewModelTest {
         db.close()
     }
 
-    private fun newVm() = ManualJournalViewModel(ledger, parties, clock)
+    private fun newVm() = ManualJournalViewModel(ledger, parties, clock, SettingsRepository(context))
+
+    @Test
+    fun rialUnitTypesRialAndAcceptsAmountThatIsNotWholeToman() {
+        SettingsRepository(context).setAmountUnit(AmountUnit.RIAL)
+        val vm = newVm()
+        fillBalanced(vm, debit = "1100", credit = "4100", amount = "5000001")
+        val ready = awaitValue({ vm.ui.value }) { it.canSave }
+        assertEquals(AmountUnit.RIAL, ready.unit)
+        assertEquals(5_000_001L, ready.check.debitRial)
+    }
+
+    @Test
+    fun tomanUnitRejectsAmountThatIsNotWholeToman() {
+        SettingsRepository(context).setAmountUnit(AmountUnit.TOMAN)
+        val vm = newVm()
+        fillBalanced(vm, debit = "1100", credit = "4100", amount = "5000001")
+        val ui = awaitValue({ vm.ui.value }) { state -> state.rows.any { !it.amountValid } }
+        assertEquals(AmountUnit.TOMAN, ui.unit)
+        assertFalse(ui.canSave)
+    }
 
     private fun <T> awaitValue(read: () -> T, ok: (T) -> Boolean): T {
         repeat(300) {

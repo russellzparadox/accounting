@@ -3,6 +3,7 @@ package com.example.accounting.feature.reports
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.domain.report.JournalDoc
 import com.example.accounting.core.domain.report.JournalDocLine
@@ -28,6 +29,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -57,12 +61,13 @@ data class ReportsUi(
 
 /**
  * Builds report tables from committed data. Read-only: nothing here writes to the ledger.
- * Unit is fixed to TOMAN until the settings screen (T12) supplies it.
+ * Amounts use the unit from [SettingsRepository] (toman or rial). A change of unit rebuilds the open report.
  */
 @HiltViewModel
 class ReportsViewModel @Inject constructor(
     private val ledger: LedgerRepository,
     private val clock: Clock,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     private val today: LocalDate get() = LocalDate.now(clock)
     private val _ui = MutableStateFlow(ReportsUi(year = JalaliDate.from(LocalDate.now(clock)).year))
@@ -72,6 +77,10 @@ class ReportsViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             ledger.fiscalYears().collect { years -> _ui.value = _ui.value.copy(years = years) }
+        }
+        viewModelScope.launch {
+            // drop(1): the first value is the one the initial refresh already used.
+            settings.settings.map { it.amountUnit }.distinctUntilChanged().drop(1).collect { refresh() }
         }
         refresh()
     }
@@ -111,6 +120,7 @@ class ReportsViewModel @Inject constructor(
     private fun refresh() {
         job?.cancel()
         val s = _ui.value
+        val unit = settings.current.amountUnit
         if (s.dateError) {
             _ui.value = s.copy(table = null, busy = false, message = R.string.report_bad_dates)
             return
@@ -127,7 +137,7 @@ class ReportsViewModel @Inject constructor(
         }
         _ui.value = s.copy(busy = true, message = null)
         job = viewModelScope.launch {
-            val table = withContext(Dispatchers.IO) { build(s.kind, s.year, range, code) }
+            val table = withContext(Dispatchers.IO) { build(s.kind, s.year, range, code, unit) }
             val current = _ui.value
             _ui.value = current.copy(
                 busy = false,
@@ -138,7 +148,13 @@ class ReportsViewModel @Inject constructor(
     }
 
     /** Null only when a ledger account code is unknown. */
-    private suspend fun build(kind: ReportKind, year: Int, range: DateRange, code: String): ReportTable? {
+    private suspend fun build(
+        kind: ReportKind,
+        year: Int,
+        range: DateRange,
+        code: String,
+        unit: AmountUnit,
+    ): ReportTable? {
         val names = ledger.accounts().first().associate { it.code to it.nameFa }
         val reportRange = ReportRange(range.from, range.to)
         return when (kind) {
@@ -148,7 +164,7 @@ class ReportsViewModel @Inject constructor(
                     year,
                     range.to,
                     tb.rows.map { TrialAccount(it.code, it.name, it.debit, it.credit) },
-                    UNIT,
+                    unit,
                 )
             }
             ReportKind.JOURNAL -> {
@@ -165,7 +181,7 @@ class ReportsViewModel @Inject constructor(
                             },
                         )
                     },
-                    UNIT,
+                    unit,
                 )
             }
             ReportKind.LEDGER -> {
@@ -176,15 +192,13 @@ class ReportsViewModel @Inject constructor(
                     name,
                     reportRange,
                     lines.map { LedgerHistoryLine(it.date, it.fiscalYear, it.docNumber, it.memo, it.debit, it.credit) },
-                    UNIT,
+                    unit,
                 )
             }
         }
     }
 
     companion object {
-        val UNIT: AmountUnit = AmountUnit.TOMAN
-
         /** [range] must sit inside the Jalali fiscal year [year] (bounds from T05). */
         fun insideFiscalYear(range: DateRange, year: Int): Boolean {
             val (start, end) = JalaliDate.fiscalYear(year)

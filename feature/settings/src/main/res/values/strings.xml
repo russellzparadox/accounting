@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">تنظیمات</string>
+    <string name="action_cancel">انصراف</string>
+    <string name="settings_back_cd">بازگشت</string>
+
+    <string name="section_unit">واحد مبلغ</string>
+    <string name="unit_help">مبلغ‌ها در فرم‌ها و گزارش‌ها با این واحد نشان داده و وارد می‌شوند. داده‌ها همیشه به ریال ذخیره می‌شوند.</string>
+    <string name="unit_toman">تومان</string>
+    <string name="unit_rial">ریال</string>
+
+    <string name="section_fiscal">سال مالی</string>
+    <string name="fiscal_year_label">سال مالی: %1$s</string>
+    <string name="fiscal_current_note">سال جاری</string>
+    <string name="fiscal_prev">سال قبل</string>
+    <string name="fiscal_next">سال بعد</string>
+    <string name="fiscal_reset">سال جاری</string>
+
+    <string name="section_backend">سرور حسابداری</string>
+    <string name="backend_url_label">آدرس سرور</string>
+    <string name="backend_token_label">توکن پروکسی</string>
+    <string name="backend_token_saved">توکن ذخیره شده است. اگر تغییرش نمی‌دهید، این کادر را خالی بگذارید.</string>
+    <string name="backend_show">نمایش</string>
+    <string name="backend_hide">پنهان</string>
+    <string name="backend_save">ذخیره</string>
+    <string name="backend_test">تست اتصال</string>
+    <string name="backend_testing">در حال بررسی…</string>
+    <string name="backend_test_hint">تست فقط با تنظیمات ذخیره‌شده انجام می‌شود.</string>
+    <string name="conn_ok">اتصال برقرار است و توکن پذیرفته شد.</string>
+    <string name="conn_unauthorized">توکن پذیرفته نشد. توکن را بررسی کنید.</string>
+    <string name="conn_rate_limited">سرور موقتاً درخواست‌ها را محدود کرده است. کمی بعد دوباره امتحان کنید.</string>
+    <string name="conn_server">سرور خطا داد. کمی بعد دوباره امتحان کنید.</string>
+    <string name="conn_unreachable">اتصال برقرار نشد. اینترنت و آدرس سرور را بررسی کنید.</string>
+    <string name="conn_not_configured">ابتدا آدرس سرور و توکن را ذخیره کنید.</string>
+
+    <string name="section_backup">پشتیبان و بازیابی</string>
+    <string name="backup_help">پشتیبان، کل فایل دفتر است. بازیابی همه داده‌های فعلی را با محتوای پشتیبان جایگزین می‌کند.</string>
+    <string name="backup_export">ذخیره پشتیبان</string>
+    <string name="backup_restore">بازیابی از پشتیبان</string>
+    <string name="backup_busy">در حال انجام…</string>
+    <string name="backup_done">پشتیبان ذخیره شد.</string>
+    <string name="backup_read_failed">فایل خوانده نشد. فایل را دوباره انتخاب کنید.</string>
+    <string name="backup_write_failed">پشتیبان ذخیره نشد. جای ذخیره را بررسی کنید.</string>
+    <string name="restore_not_backup">این فایل پشتیبان حسابداری نیست. بازیابی انجام نشد.</string>
+    <string name="restore_too_small">فایل خیلی کوچک است و پشتیبان معتبر نیست. بازیابی انجام نشد.</string>
+    <string name="restore_corrupt">فایل پشتیبان خراب است. بازیابی انجام نشد.</string>
+    <string name="restore_wrong_version">نسخه این پشتیبان با این برنامه سازگار نیست. بازیابی انجام نشد.</string>
+    <string name="restore_not_ledger">این فایل دفتر حسابداری نیست. بازیابی انجام نشد.</string>
+    <string name="restore_swap_failed">بازیابی انجام نشد.</string>
+    <string name="restore_confirm_title">بازیابی از پشتیبان؟</string>
+    <string name="restore_confirm_body">همه داده‌های فعلی با محتوای این پشتیبان جایگزین می‌شود. پیش از آن، یک نسخه از داده‌های فعلی در فضای داخلی برنامه نگه داشته می‌شود.</string>
+    <string name="restore_confirm_action">بازیابی</string>
+    <string name="restore_done_title">بازیابی انجام شد</string>
+    <string name="restore_done_body">برنامه دوباره باز می‌شود تا داده‌های تازه خوانده شوند.</string>
+    <string name="restore_done_action">باز کردن دوباره</string>
+
+    <string name="section_theme">ظاهر</string>
+    <string name="theme_help">رنگ برنامه از تنظیمات روشن یا تاریک گوشی پیروی می‌کند.</string>
+
+    <string name="section_about">درباره</string>
+    <string name="about_app">حسابداری</string>
+    <string name="about_version">نسخه %1$s</string>
+
+    <string name="section_privacy">حریم خصوصی</string>
+    <string name="privacy_show">متن حریم خصوصی</string>
+    <string name="privacy_close">بستن</string>
+
+    <string name="onboarding_title">پیش از شروع</string>
+    <string name="onboarding_intro">پیش از اولین ثبت، ببینید چه داده‌ای فرستاده می‌شود.</string>
+    <string name="onboarding_accept">پذیرفتن و ادامه</string>
+    <string-array name="privacy_points">
+        <item>وقتی تراکنشی را با متن یا صدا ثبت می‌کنید، همان متن و تاریخ امروز به سرور پروکسی حسابداری فرستاده می‌شود. سرور این متن را به یک مدل زبانی می‌دهد تا نوع تراکنش، مبلغ، تاریخ و طرف حساب را استخراج کند.</item>
+        <item>تبدیل صدا به متن با سرویس تشخیص گفتار گوشی انجام می‌شود. خود صدا به سرور فرستاده نمی‌شود.</item>
+        <item>فقط متنی که وارد می‌کنید و تاریخ امروز فرستاده می‌شود. فهرست حساب‌ها و اطلاعات دفتر شما فرستاده نمی‌شود.</item>
+        <item>کلید API مدل زبانی داخل برنامه نیست و فقط روی سرور نگهداری می‌شود. برنامه فقط توکن پروکسی شما را دارد و آن را روی همین گوشی رمزگذاری‌شده ذخیره می‌کند.</item>
+        <item>مدل مبلغ را حساب نمی‌کند. تبدیل مبلغ و جمع‌ها با کد قطعی انجام می‌شود و هیچ تراکنشی بدون تأیید شما ثبت نمی‌شود.</item>
+        <item>اگر سرور را تنظیم نکنید، هیچ متنی فرستاده نمی‌شود. با «ثبت دستی» همه کارها را بدون سرور انجام می‌دهید.</item>
+        <item>پشتیبان کل دفتر شماست. فایل پشتیبان را جای امنی نگه دارید؛ هر کس به آن دسترسی داشته باشد داده‌های شما را می‌بیند.</item>
+    </string-array>
+</resources>

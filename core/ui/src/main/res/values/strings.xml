@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Jalali date picker (core:ui components/JalaliDatePicker.kt). -->
+    <string name="picker_title_default">انتخاب تاریخ</string>
+    <string name="picker_confirm">تأیید</string>
+    <string name="picker_cancel">انصراف</string>
+    <string name="picker_prev_month">ماه قبل</string>
+    <string name="picker_next_month">ماه بعد</string>
+    <string name="picker_selected">تاریخ انتخاب‌شده: %1$s</string>
+    <string name="picker_day_cd">روز %1$s، %2$s</string>
+
+    <string-array name="picker_weekdays_short">
+        <item>ش</item>
+        <item>ی</item>
+        <item>د</item>
+        <item>س</item>
+        <item>چ</item>
+        <item>پ</item>
+        <item>ج</item>
+    </string-array>
+    <string-array name="picker_weekdays_full">
+        <item>شنبه</item>
+        <item>یکشنبه</item>
+        <item>دوشنبه</item>
+        <item>سه‌شنبه</item>
+        <item>چهارشنبه</item>
+        <item>پنج‌شنبه</item>
+        <item>جمعه</item>
+    </string-array>
+</resources>

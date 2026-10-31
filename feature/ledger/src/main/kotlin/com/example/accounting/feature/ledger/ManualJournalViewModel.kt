@@ -15,6 +15,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
 import java.time.LocalDate
 import java.util.UUID
+import com.example.accounting.core.data.config.SettingsRepository
+import com.example.accounting.core.persian.AmountUnit
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -38,6 +41,7 @@ class ManualJournalViewModel @Inject constructor(
     private val ledger: LedgerRepository,
     private val parties: PartyRepository,
     private val clock: Clock,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private var nextLineId = 1L
@@ -48,15 +52,23 @@ class ManualJournalViewModel @Inject constructor(
     private val openYears: StateFlow<List<Int>> = ledger.fiscalYears()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Amount unit from settings. Amounts are typed and shown in it; rial is stored either way. */
+    private val unit: StateFlow<AmountUnit> = settings.settings.map { it.amountUnit }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, settings.current.amountUnit)
+
     private val _draft = MutableStateFlow(blankDraft())
 
-    val ui: StateFlow<ManualJournalUi> = combine(_draft, accounts, openYears) { draft, accts, years ->
-        buildManualUi(draft, accts, years)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, buildManualUi(_draft.value, emptyList(), emptyList()))
+    val ui: StateFlow<ManualJournalUi> = combine(_draft, accounts, openYears, unit) { draft, accts, years, u ->
+        buildManualUi(draft, accts, years, u)
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Eagerly,
+        buildManualUi(_draft.value, emptyList(), emptyList(), settings.current.amountUnit),
+    )
 
     /** Blank document with two lines (one debit, one credit), or a prefill from [seed]. */
     fun start(seed: JournalEntry?) {
-        _draft.value = if (seed == null) blankDraft() else seededDraft(seed) { nextLineId++ }
+        _draft.value = if (seed == null) blankDraft() else seededDraft(seed, { nextLineId++ }, settings.current.amountUnit)
     }
 
     fun onAction(action: ManualAction) {
@@ -114,10 +126,11 @@ class ManualJournalViewModel @Inject constructor(
     private fun save() {
         val snapshot = _draft.value
         if (snapshot.saving || snapshot.savedDocNumber != null) return
-        if (!buildManualUi(snapshot, accounts.value, openYears.value).canSave) return
+        val amountUnit = settings.current.amountUnit
+        if (!buildManualUi(snapshot, accounts.value, openYears.value, amountUnit).canSave) return
         _draft.update { it.copy(saving = true, error = null) }
         viewModelScope.launch {
-            val outcome = withContext(Dispatchers.IO) { persist(snapshot) }
+            val outcome = withContext(Dispatchers.IO) { persist(snapshot, amountUnit) }
             _draft.update { current ->
                 when (outcome) {
                     is SaveOutcome.Saved -> current.copy(saving = false, savedDocNumber = outcome.docNumber)
@@ -128,11 +141,11 @@ class ManualJournalViewModel @Inject constructor(
     }
 
     /** Runs off the main thread: party resolution blocks, and the commit is a Room transaction. */
-    private suspend fun persist(snapshot: ManualDraft): SaveOutcome {
+    private suspend fun persist(snapshot: ManualDraft, amountUnit: AmountUnit): SaveOutcome {
         val date = parseJalaliInput(snapshot.dateText)
             ?: return SaveOutcome.Failed(ManualError.SAVE_FAILED)
         val resolved = try {
-            snapshot.lines.map { it.toDomain() }.map { line ->
+            snapshot.lines.map { it.toDomain(amountUnit) }.map { line ->
                 val account = line.account
                 if (account is ManualAccount.NewParty) {
                     val name = checkNotNull(ManualJournal.partyDisplayName(account.name))

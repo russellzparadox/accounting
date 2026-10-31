@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.nlp.NlParserProvider
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.seed.ChartSeeder
@@ -29,9 +30,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -53,6 +57,7 @@ class EntryViewModel @Inject constructor(
     private val configStore: ConfigStore,
     private val parserProvider: NlParserProvider,
     private val clock: Clock,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(EntryUiState())
@@ -65,6 +70,10 @@ class EntryViewModel @Inject constructor(
      * (this ViewModel is Activity-scoped and the tab's route leaves composition).
      */
     val input: StateFlow<String> = inputText.asStateFlow()
+
+    /** Amount unit from settings, for the draft card and the manual sheet. */
+    val amountUnit: StateFlow<AmountUnit> = settings.settings.map { it.amountUnit }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, settings.current.amountUnit)
 
     /** Seq of the last voice transcript applied to [input]. */
     private var lastVoiceSeq = 0
@@ -363,7 +372,7 @@ class EntryViewModel @Inject constructor(
         EntryErrorKind.LEDGER_FAILED -> R.string.error_ledger_body
     }
 
-    private fun money(rial: Long): String = MoneyFormat.format(rial, AmountUnit.TOMAN)
+    private fun money(rial: Long): String = MoneyFormat.format(rial, settings.current.amountUnit)
 
     private fun string(id: Int, vararg args: Any): String = context.getString(id, *args)
 

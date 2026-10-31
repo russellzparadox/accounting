@@ -2,6 +2,7 @@ package com.example.accounting.di
 
 import android.content.Context
 import com.example.accounting.core.data.config.ConfigStore
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.db.AppDatabase
 import com.example.accounting.core.data.nlp.NlParserHttpProvider
 import com.example.accounting.core.data.nlp.NlParserProvider
@@ -57,6 +58,10 @@ object DataModule {
     @Provides
     @Singleton
     fun provideConfigStore(@ApplicationContext context: Context): ConfigStore = ConfigStore(context)
+
+    @Provides
+    @Singleton
+    fun provideSettings(@ApplicationContext context: Context): SettingsRepository = SettingsRepository(context)
 
     @Provides
     @Singleton

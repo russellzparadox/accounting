@@ -26,7 +26,13 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun journalDao(): JournalDao
 
     companion object {
-        fun file(context: Context, name: String = "accounting.db"): AppDatabase =
+        /** Must equal the `version` in the @Database annotation above. Checked by a test and by backup restore. */
+        const val SCHEMA_VERSION = 1
+
+        /** File name under the app's databases folder. */
+        const val FILE_NAME = "accounting.db"
+
+        fun file(context: Context, name: String = FILE_NAME): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, name)
                 .addCallback(IntegrityCallback)
                 .build()

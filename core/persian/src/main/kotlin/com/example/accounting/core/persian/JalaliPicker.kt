@@ -41,6 +41,12 @@ data class JalaliPickerState(val year: Int, val month: Int, val day: Int) {
 
     fun toDate(): JalaliDate = JalaliDate(year, month, day)
 
+    /**
+     * Empty cells before the 1st of the month in a week grid that starts on شنبه (Saturday).
+     * Saturday = 0 ... Friday = 6.
+     */
+    fun leadingBlanks(): Int = (JalaliDate(year, month, 1).toGregorian().dayOfWeek.value - 6 + 7) % 7
+
     /** Years offered in the year list, centred on [year] and clamped to the picker range. */
     fun yearOptions(radius: Int = YEAR_RADIUS): List<Int> =
         (year - radius..year + radius).filter { it in MIN_YEAR..MAX_YEAR }

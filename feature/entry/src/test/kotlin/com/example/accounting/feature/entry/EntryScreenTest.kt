@@ -45,6 +45,7 @@ import com.example.accounting.core.domain.pipeline.NlParser
 import com.example.accounting.core.domain.pipeline.ParsedIntent
 import com.example.accounting.core.domain.pipeline.ParserResult
 import com.example.accounting.core.persian.AmountUnit
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.persian.MoneyFormat
 import com.example.accounting.core.ui.theme.AccountingTheme
 import java.time.Clock
@@ -171,6 +172,7 @@ class EntryScreenTest {
                 configStore = ConfigStore(context),
                 parserProvider = FixedProvider(StubParser(sodaResult())),
                 clock = clock,
+                settings = SettingsRepository(context),
             )
             val onEntryTab = mutableStateOf(true)
             compose.setContent {
@@ -194,6 +196,23 @@ class EntryScreenTest {
         } finally {
             db.close()
         }
+    }
+
+    @Test
+    fun draftShowsTotalsInRialWhenSettingIsRial() {
+        val card = testDraft()
+        val rialText = MoneyFormat.format(SODA_RIAL, AmountUnit.RIAL)
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(items = listOf(card)),
+                    onAction = {},
+                    amountUnit = AmountUnit.RIAL,
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.confirm_debit_total, rialText)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.confirm_credit_total, rialText)).assertIsDisplayed()
     }
 
     @Test
@@ -263,6 +282,7 @@ class EntryScreenTest {
                 configStore = ConfigStore(context),
                 parserProvider = FixedProvider(StubParser(sodaResult())),
                 clock = clock,
+                settings = SettingsRepository(context),
             )
             compose.setContent {
                 AccountingTheme {

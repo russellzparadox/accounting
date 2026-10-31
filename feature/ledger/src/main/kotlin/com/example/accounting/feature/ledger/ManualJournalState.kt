@@ -8,21 +8,25 @@ import com.example.accounting.core.domain.ManualJournal
 import com.example.accounting.core.domain.ManualLine
 import com.example.accounting.core.domain.PartyKind
 import com.example.accounting.core.domain.Side
+import com.example.accounting.core.persian.AmountInput
+import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
 import com.example.accounting.core.persian.PersianDigits
-import com.example.accounting.core.persian.TomanInput
 
-/** One line as typed. [id] is stable (Compose keys). [amountText] is the typed toman, Persian or Latin digits. */
+/**
+ * One line as typed. [id] is stable (Compose keys). [amountText] is typed in the display unit from settings
+ * (toman or rial), Persian or Latin digits. Conversion to rial is [AmountInput] only.
+ */
 data class ManualLineDraft(
     val id: Long,
     val account: ManualAccount = ManualAccount.Missing,
     val side: Side = Side.DEBIT,
     val amountText: String = "",
 ) {
-    /** Rial for this line. Null when the amount is empty, zero, or not a whole toman amount. */
-    val rial: Long? get() = TomanInput.parse(amountText)?.let { ManualJournal.tomanToRial(it) }
+    /** Rial for this line in [unit]. Null when the amount is empty, zero, or invalid for that unit. */
+    fun rial(unit: AmountUnit): Long? = AmountInput.parseRial(amountText, unit)
 
-    fun toDomain(): ManualLine = ManualLine(account, side, rial)
+    fun toDomain(unit: AmountUnit): ManualLine = ManualLine(account, side, rial(unit))
 }
 
 /** Editable document. Nothing here is persisted until the user saves. */
@@ -68,6 +72,8 @@ data class ManualJournalUi(
     val saving: Boolean,
     val savedDocNumber: Int?,
     val error: ManualError?,
+    /** Unit the amounts are typed and shown in (settings). */
+    val unit: AmountUnit = AmountUnit.TOMAN,
 ) {
     /** Save is possible only for a balanced, valid document in an open fiscal year, once. */
     val canSave: Boolean get() = check.isValid && dateValid && dateYearOpen && !saving && savedDocNumber == null
@@ -91,7 +97,12 @@ sealed interface ManualAction {
 }
 
 /** Derives the screen state. Pure, so it is testable without Android. */
-internal fun buildManualUi(draft: ManualDraft, accounts: List<Account>, openYears: List<Int>): ManualJournalUi {
+internal fun buildManualUi(
+    draft: ManualDraft,
+    accounts: List<Account>,
+    openYears: List<Int>,
+    unit: AmountUnit = AmountUnit.TOMAN,
+): ManualJournalUi {
     val date = parseJalaliInput(draft.dateText)
     val year = date?.let { JalaliDate.from(it).year }
     val names = accounts.associate { it.code to it.nameFa }
@@ -108,7 +119,7 @@ internal fun buildManualUi(draft: ManualDraft, accounts: List<Account>, openYear
             newParty = (account as? ManualAccount.NewParty)?.kind,
             side = line.side,
             amountText = line.amountText,
-            amountValid = line.rial != null,
+            amountValid = line.rial(unit) != null,
         )
     }
     val pickerAccounts = if (draft.pickerLine == null) {
@@ -130,7 +141,7 @@ internal fun buildManualUi(draft: ManualDraft, accounts: List<Account>, openYear
         dateYearOpen = year != null && year in openYears,
         memo = draft.memo,
         rows = rows,
-        check = ManualJournal.check(draft.lines.map { it.toDomain() }, accounts),
+        check = ManualJournal.check(draft.lines.map { it.toDomain(unit) }, accounts),
         pickerLine = draft.pickerLine,
         query = draft.query,
         pickerAccounts = pickerAccounts,
@@ -138,6 +149,7 @@ internal fun buildManualUi(draft: ManualDraft, accounts: List<Account>, openYear
         saving = draft.saving,
         savedDocNumber = draft.savedDocNumber,
         error = draft.error,
+        unit = unit,
     )
 }
 
@@ -145,7 +157,7 @@ internal fun buildManualUi(draft: ManualDraft, accounts: List<Account>, openYear
  * Prefill from an unconfirmed entry (its lines, date and memo). A line whose amount is not a whole toman
  * amount keeps an empty amount, so the user must type it again instead of the value changing silently.
  */
-internal fun seededDraft(entry: JournalEntry, nextId: () -> Long): ManualDraft = ManualDraft(
+internal fun seededDraft(entry: JournalEntry, nextId: () -> Long, unit: AmountUnit = AmountUnit.TOMAN): ManualDraft = ManualDraft(
     dateText = JalaliDate.from(entry.date).toString(),
     memo = entry.memo.orEmpty(),
     lines = entry.lines.map { line ->
@@ -153,8 +165,8 @@ internal fun seededDraft(entry: JournalEntry, nextId: () -> Long): ManualDraft =
             id = nextId(),
             account = ManualAccount.Existing(line.accountCode),
             side = line.side,
-            amountText = ManualJournal.rialToWholeToman(line.amount.rial)
-                ?.let { PersianDigits.toPersian(it.toString()) }
+            amountText = AmountInput.toInputText(line.amount.rial, unit)
+                ?.let { PersianDigits.toPersian(it) }
                 .orEmpty(),
         )
     },
