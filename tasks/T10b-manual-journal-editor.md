@@ -1,5 +1,5 @@
 # T10b — Manual journal editor (free-form سند حسابداری, no LLM, no backend)
-Status: todo
+Status: in_progress
 Depends: T08, T10
 Read first: CLAUDE.md, handouts/T03-domain-core.md, handouts/T04-room-persistence.md, handouts/T08a-entry-viewmodel.md, handouts/T08-entry-ui.md, handouts/T10-ledger-ui.md, docs/DESIGN.md, docs/ACCOUNTING_RULES.md
 Skills to invoke: design:design-critique, design:accessibility-review, design:ux-copy, persian-writing:persian-writing
@@ -22,3 +22,12 @@ Skills to invoke: design:design-critique, design:accessibility-review, design:ux
 
 ## Out of scope
 - Editing/deleting committed documents (immutable; reversal only), attachments, multi-currency.
+
+## Added by main agent (binding)
+- Read also `handouts/T10-ledger-ui.md` (navigation shell, account picker, DocumentDetail, search normalization), `handouts/T09-voice-input.md` (skim), `handouts/T01d-ci-green.md`, `docs/CI.md`.
+- Decision: drafts' «ویرایش مبلغ» stays; committed documents have no edit/delete (golden rule 3). The manual editor creates NEW documents only.
+- Known CI gotcha: Room schema folder race fixed in `core/data/build.gradle.kts` (kspRelease depends on kspDebug). If a KSP schema JSON parse error reappears, report it in the handout; do not paper over it.
+- Reuse: `AccountPicker` (feature:ledger), `JalaliDate` + `MoneyFormat` (core:persian), `LedgerRepository.commit` and domain `JournalEntry` validation, `ChartOfAccounts.requirePostable`. Template id for free-form docs: check `TemplateId` in core:domain; if a `MANUAL` id is needed, add it WITHOUT touching the 14 template ids/serializer names used by the backend schema (T06) and the LLM intent (reject `MANUAL` as an LLM intent type). Add tests that `PostingEngine` still rejects/ignores MANUAL as an intent.
+- Entry points: a «سند دستی» action on the journal tab (FAB/top action), and «ویرایش به صورت سند» on an unconfirmed entry DraftCard (prefill lines). Persist nothing until the user taps save.
+- Party accounts: line account picker must include party معین (customers/suppliers) and allow creating a new party معین by name via `PartyRepository` (find-or-create), off the main thread.
+- Verification is CI-only: ONE push per attempt; wait for THAT run to finish before the next push (poll https://api.github.com/repos/russellzparadox/accounting/actions/runs/<id> with an `until` loop in Bash run_in_background); read the 'Failure summary' step via mcp__github__get_job_logs tail_lines <= 130. Max 7 pushes. Do NOT end your turn until the CI run for your last push has completed AND `handouts/T10b-manual-journal-editor.md` is written (screens, VM API, validation rules, audit of every acceptance criterion with file:line, design critique + a11y pass at code level, manual device checklist, final run id). Set Status done only on green + all criteria MET, update the T10b row in tasks/README.md. Each green push publishes an APK release.
