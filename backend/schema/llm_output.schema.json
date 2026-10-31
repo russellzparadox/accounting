@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "llm_output.schema.json",
+  "title": "record_transaction tool input (LLM output, strict)",
+  "description": "Input of the record_transaction tool. The LLM never sends amount_rial. Backend computes it. Every key required; nulls allowed where stated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type", "amount_text", "amount_value", "amount_unit", "date", "paid_with",
+    "bank_account", "party_name", "category", "memo", "confidence", "needs_clarification"
+  ],
+  "properties": {
+    "type": {
+      "type": ["string", "null"],
+      "enum": [
+        "PURCHASE_CASH", "PURCHASE_CREDIT", "SALE_CASH", "SALE_CREDIT",
+        "EXPENSE_PAID", "EXPENSE_PAYABLE", "RECEIPT_FROM_PERSON", "PAYMENT_TO_PERSON",
+        "BANK_TRANSFER", "OWNER_CAPITAL", "OWNER_WITHDRAWAL",
+        "PURCHASE_RETURN", "SALE_RETURN", null
+      ],
+      "description": "One of the 14 template ids minus REVERSAL. null only when needs_clarification is set."
+    },
+    "amount_text": {
+      "type": ["string", "null"],
+      "description": "Amount phrase copied verbatim from the user text (e.g. \"۵۰۰٬۰۰۰ تومان\"). Null only when needs_clarification is set."
+    },
+    "amount_value": {
+      "type": ["integer", "null"],
+      "description": "Number as stated in the text, integer, no arithmetic. Persian/Arabic digits converted to ASCII."
+    },
+    "amount_unit": {
+      "type": ["string", "null"],
+      "enum": ["toman", "rial", null],
+      "description": "toman (default when no unit is stated) or rial."
+    },
+    "date": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Gregorian yyyy-MM-dd, resolved from today."
+    },
+    "paid_with": {
+      "type": ["string", "null"],
+      "enum": ["CASH", "BANK", null],
+      "description": "CASH, BANK, or null for credit (نسیه)."
+    },
+    "bank_account": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{4}$",
+      "description": "4-digit bank معین code, or null."
+    },
+    "party_name": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "description": "Counterparty name without honorifics, or null."
+    },
+    "category": {
+      "type": ["string", "null"],
+      "enum": ["RENT", "FREIGHT", "PHONE", "SALARY", "UTILITIES", "REPAIR", "MISC", "BANK_FEE", null],
+      "description": "Only for EXPENSE_PAID and EXPENSE_PAYABLE; null otherwise."
+    },
+    "memo": {
+      "type": ["string", "null"],
+      "description": "Short free note or null."
+    },
+    "confidence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Percent 0..100, integer."
+    },
+    "needs_clarification": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["question"],
+      "properties": {
+        "question": { "type": "string", "minLength": 1 }
+      },
+      "description": "Short Persian question when the text is not a clear transaction. Non-null means no other field is used."
+    }
+  }
+}

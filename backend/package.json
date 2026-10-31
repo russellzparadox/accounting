@@ -1,0 +1,26 @@
+{
+  "name": "accounting-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LLM proxy for the Persian NL accounting app: POST /v1/parse -> TransactionIntent",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "eval": "vitest run test/eval.test.ts --reporter=verbose"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

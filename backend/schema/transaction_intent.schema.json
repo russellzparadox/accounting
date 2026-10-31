@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "transaction_intent.schema.json",
+  "title": "POST /v1/parse response",
+  "description": "Either a TransactionIntent (T03 shape, needs_clarification null, plus amount_text/amount_value/amount_unit/amount_rial) or a clarification body. Field-rule table is enforced in src/rules.ts.",
+  "oneOf": [
+    { "$ref": "#/definitions/intent" },
+    { "$ref": "#/definitions/clarification" }
+  ],
+  "definitions": {
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type", "amount_text", "amount_value", "amount_unit", "amount_rial", "date",
+        "paid_with", "bank_account", "party_name", "category", "memo", "confidence", "needs_clarification"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "PURCHASE_CASH", "PURCHASE_CREDIT", "SALE_CASH", "SALE_CREDIT",
+            "EXPENSE_PAID", "EXPENSE_PAYABLE", "RECEIPT_FROM_PERSON", "PAYMENT_TO_PERSON",
+            "BANK_TRANSFER", "OWNER_CAPITAL", "OWNER_WITHDRAWAL",
+            "PURCHASE_RETURN", "SALE_RETURN"
+          ]
+        },
+        "amount_text": { "type": "string", "minLength": 1 },
+        "amount_value": { "type": "integer", "minimum": 1 },
+        "amount_unit": { "type": "string", "enum": ["toman", "rial"] },
+        "amount_rial": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "paid_with": { "type": ["string", "null"], "enum": ["CASH", "BANK", null] },
+        "bank_account": { "type": ["string", "null"], "pattern": "^\\d{4}$" },
+        "party_name": { "type": ["string", "null"], "minLength": 1 },
+        "category": {
+          "type": ["string", "null"],
+          "enum": ["RENT", "FREIGHT", "PHONE", "SALARY", "UTILITIES", "REPAIR", "MISC", "BANK_FEE", null]
+        },
+        "memo": { "type": ["string", "null"] },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "needs_clarification": { "type": "null" }
+      }
+    },
+    "clarification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["needs_clarification"],
+      "properties": {
+        "needs_clarification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["question"],
+          "properties": {
+            "question": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

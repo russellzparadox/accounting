@@ -1,5 +1,5 @@
 # T06 — backend-llm-proxy
-Status: in_progress
+Status: done
 Depends: T02
 Read first: CLAUDE.md, handouts/T02-accounting-rules.md
 Skills to invoke: persian-writing:persian-writing
