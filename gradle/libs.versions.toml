@@ -1,7 +1,7 @@
 [versions]
 # Gradle 8.14.3 (latest 8.x; AGP 8.x does not support Gradle 9.x)
 agp = "8.13.0"
-kotlin = "2.2.20"
+kotlin = "2.4.21"
 ksp = "2.2.20-2.0.4"
 hilt = "2.57.1"
 composeBom = "2025.10.00"
