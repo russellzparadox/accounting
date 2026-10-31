@@ -1,17 +1,18 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-}
-
-android {
-    namespace = "com.example.accounting.core.domain"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
     jvmToolchain(21)
+}
+
+dependencies {
+    implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.kotlin.test.junit5)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
