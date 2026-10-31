@@ -128,5 +128,60 @@ jobs:
           print(f"total failed testcases: {n}")
           print("androidTest result files: " + str(len(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True))))
           PY
+          python3 - <<'PY' || true
+          import glob, re
+          def esc(t):
+              return t.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          # Gradle cause lines (the failure message is above the 60-line tail printed by the test step).
+          print("== gradle cause lines ==")
+          try:
+              glines = open('qa-artifacts/gradle-instrumented.log', encoding='utf-8', errors='replace').read().splitlines()
+          except OSError:
+              glines = []
+          k = 0
+          for line in glines:
+              if re.search(r'Instrumentation run failed|Process crashed|Test run failed|Caused by|FAILURE: Build failed|What went wrong|Unable to|crash', line):
+                  k += 1
+                  if k > 25:
+                      break
+                  print(line[:400])
+                  print(f"::error title=gradle-cause::{esc(line.strip()[:800])}")
+          # Raw result XML: suite-level counts and captured stderr. A crash can leave no failed testcase.
+          print("== androidTest result XML (suite level) ==")
+          import xml.etree.ElementTree as ET
+          for f in sorted(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True)):
+              try:
+                  root = ET.parse(f).getroot()
+              except Exception as e:
+                  print(f"unparseable: {f}: {e}")
+                  continue
+              suites = [root] if root.tag == 'testsuite' else list(root.iter('testsuite'))
+              for s in suites:
+                  attrs = {k2: s.get(k2) for k2 in ('name', 'tests', 'failures', 'errors', 'skipped')}
+                  print(f"suite {attrs}")
+                  print(f"::error title=androidTest-suite::{esc(str(attrs))}")
+                  err = s.find('system-err')
+                  out = s.find('system-out')
+                  for label, node in (('system-err', err), ('system-out', out)):
+                      if node is not None and (node.text or '').strip():
+                          txt = node.text.strip()[:1500]
+                          print(f"{label}: {txt[:600]}")
+                          print(f"::error title=androidTest-{label}::{esc(txt[:2500])}")
+          # Logcat: fatal crash lines from the app and the runtime (filtered capture written by this job).
+          print("== logcat fatal lines ==")
+          try:
+              llines = open('qa-artifacts/logcat-full.txt', encoding='utf-8', errors='replace').read().splitlines()
+          except OSError:
+              llines = []
+          j = 0
+          for i, line in enumerate(llines):
+              if re.search(r'FATAL EXCEPTION|Process: com\.example|AndroidRuntime: Caused by|NoClassDefFoundError|NoSuchMethodError|NoSuchFieldError|ClassNotFoundException|ExceptionInInitializerError', line):
+                  j += 1
+                  if j > 12:
+                      break
+                  block = '\n'.join(llines[i:i + 6])
+                  print(block[:800])
+                  print(f"::error title=logcat-fatal::{esc(block[:1800])}")
+          PY
           echo "== qa-artifacts =="
           find qa-artifacts -type f 2>/dev/null | sort | head -20 || true
