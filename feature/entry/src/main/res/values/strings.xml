@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Errors (ChatItem.Error). Titles and bodies are chosen by EntryViewModel. -->
+    <string name="error_parse_title">متوجه نشدیم</string>
+    <string name="error_parse_body">مبلغ یا شرح تراکنش مشخص نیست. آن را کامل‌تر بنویسید.</string>
+    <string name="error_network_title">اتصال برقرار نشد</string>
+    <string name="error_network_body">اینترنت را بررسی کنید و دوباره تلاش کنید. چیزی ثبت نشده است.</string>
+    <string name="error_unauthorized_body">دسترسی به سرور مجاز نیست. تنظیمات سرور را بررسی کنید.</string>
+    <string name="error_rate_limited_body">تعداد درخواست‌ها زیاد است. کمی بعد دوباره تلاش کنید.</string>
+    <string name="error_server_body">سرور در این لحظه پاسخ نداد. چیزی ثبت نشده است.</string>
+    <string name="error_bad_response_body">پاسخ سرور خوانده نشد. تراکنش را ساده‌تر بنویسید یا به‌صورت دستی ثبت کنید.</string>
+    <string name="error_empty_body">متنی برای ثبت وارد نشده است.</string>
+    <string name="error_date_outside_body">تاریخ این تراکنش خارج از سال مالی باز است.</string>
+    <string name="error_not_configured_title">سرور تنظیم نشده است</string>
+    <string name="error_not_configured_body">برای ثبت با متن، آدرس و کلید سرور را تنظیم کنید. ثبت دستی همچنان کار می‌کند.</string>
+    <string name="error_manual_invalid_body">اطلاعات ثبت دستی کامل یا درست نیست. چیزی ثبت نشد.</string>
+    <string name="error_ledger_body">ثبت انجام نشد و چیزی تغییر نکرد.</string>
+    <string name="error_generic_title">ثبت انجام نشد</string>
+
+    <!-- Confirmation reasons (ConfirmReason). %1$s = backend amount, %2$s = amount detected in the text. -->
+    <string name="reason_amount_mismatch">مبلغ پیشنهادی %1$s با مبلغ متن %2$s فرق دارد.</string>
+    <string name="reason_amount_unverified">مبلغی در متن پیدا نشد. مبلغ را بررسی کنید.</string>
+    <string name="reason_amount_text_unverified">بخشی از متن که مبلغ را نشان می‌دهد پیدا نشد. بررسی کنید.</string>
+    <string name="reason_low_confidence">اطمینان سیستم از این خوانش کم است.</string>
+
+    <!-- Draft card and buttons. -->
+    <string name="confirm_title">بررسی تراکنش</string>
+    <string name="confirm_action">ثبت تراکنش</string>
+    <string name="confirm_cancel_action">انصراف</string>
+    <string name="action_retry">تلاش دوباره</string>
+    <string name="action_use_detected">استفاده از مبلغ متن</string>
+    <string name="action_use_model">استفاده از مبلغ پیشنهادی</string>
+    <string name="action_discard">لغو پیش‌نویس</string>
+    <string name="action_configure_server">تنظیم سرور</string>
+    <string name="action_manual_entry">ثبت دستی</string>
+    <string name="action_answer">ارسال پاسخ</string>
+
+    <!-- Committed and reversed notices. %1$s = document number (Persian digits). -->
+    <string name="committed_notice">تراکنش ثبت‌شده است. سند شماره %1$s.</string>
+    <string name="reversed_notice">تراکنش معکوس شد. سند اصلاحی شماره %1$s ثبت شد.</string>
+    <string name="row_reversed_badge">معکوس شده</string>
+    <string name="reverse_action">ثبت تراکنش معکوس</string>
+
+    <!-- Progress. -->
+    <string name="loading_parse">در حال خواندن تراکنش…</string>
+    <string name="loading_save">در حال ثبت…</string>
+</resources>
