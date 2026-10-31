@@ -28,3 +28,8 @@ Skills to invoke: none
 - `./gradlew test`
 - `./gradlew connectedDebugAndroidTest` (if device available)
 - `cd backend && npm test`
+
+## Carried over (main agent, binding)
+- From T09: add >= 5 spoken-amount sentences through the voice->pipeline test path (`نیم میلیون`, `دو و نیم میلیون`, mixed digits/words, colloquial `تومن`).
+- From T11 (A3): PDF Persian RTL rendering is unverified by tests (PdfDocument cannot run under Robolectric). Add a CI job using an Android emulator (e.g. reactivecircus/android-emulator-runner, API 34, x86_64, KVM enabled on ubuntu-latest) that runs an instrumented test: export a trial-balance PDF, render pages with `PdfRenderer` to Bitmaps, assert page count > 0 and non-blank pixels, and upload the PNGs + PDF as workflow artifacts for the user to inspect. Same emulator job should run basic UI smoke tests (launch app, type manual entry, commit, see in journal). Keep this job separate from the main `android` build so it never blocks releases (allow failure / separate workflow `instrumented.yml`, manual + nightly trigger).
+- From T10: process death restore for unsent entry text (SavedStateHandle) if not done.

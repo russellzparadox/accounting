@@ -1,5 +1,5 @@
 # T11 — reports
-Status: partial (CI green run 41198957224; PDF render unverified, see handouts/T11-reports.md)
+Status: done (accepted by main agent; A3 PDF render verification -> T13 emulator job; A5 unit setting -> T12)
 Depends: T10
 Read first: CLAUDE.md, handouts/T10-ledger-ui.md
 Skills to invoke: persian-writing:persian-writing, design:design-system, design:design-critique
