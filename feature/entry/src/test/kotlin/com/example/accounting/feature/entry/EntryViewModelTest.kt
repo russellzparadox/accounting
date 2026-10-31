@@ -354,7 +354,7 @@ class EntryViewModelTest {
     fun spokenNumberWordsReachDraftAndNothingCommitsOnItsOwn() = runBlocking {
         configure()
         val speech = FakeSpeechSource()
-        val voice = VoiceViewModel(speech, SpeechDiagnostics(), FakeLanguagePack())
+        val voice = VoiceViewModel(speech, SpeechDiagnostics(), FakeLanguagePack(), FakeVoicePreferences())
         voice.onAction(VoiceAction.Start(""))
         speech.emit(SpeechEvent.Final(SPOKEN_TEXT))
         shadowOf(Looper.getMainLooper()).idle()

@@ -162,7 +162,7 @@ fun EntryScreen(
                     onAction(EntryAction.Submit(input))
                     onInputChange("")
                 },
-                sendEnabled = input.isNotBlank() && !state.busy && !voice.listening,
+                sendEnabled = input.isNotBlank() && !state.busy && !voice.listening && !voice.processing,
                 busy = state.busy,
                 listening = voice.listening,
                 voiceError = voice.error,
@@ -171,6 +171,8 @@ fun EntryScreen(
                 onMicClick = onMicClick,
                 onPackDownload = { onVoiceAction(VoiceAction.DownloadLanguagePack) },
                 onOpenVoiceSettings = voiceSettingsAction,
+                voiceEngine = voice.engine,
+                voiceProcessing = voice.processing,
                 modifier = Modifier.imePadding().navigationBarsPadding(),
             )
         },
@@ -207,6 +209,12 @@ fun EntryScreen(
                 openAppSettings(context)
             },
             onDismiss = { micSheet = null },
+        )
+    }
+    if (voice.consentRequired) {
+        CloudConsentDialog(
+            onConfirm = { onVoiceAction(VoiceAction.ConfirmCloudConsent) },
+            onDismiss = { onVoiceAction(VoiceAction.DismissCloudConsent) },
         )
     }
 }

@@ -10,11 +10,13 @@ import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.repo.PartyRepository
 import com.example.accounting.core.data.seed.ChartSeeder
 import com.example.accounting.core.data.speech.AndroidRecognizerFactory
-import com.example.accounting.core.data.speech.AndroidSpeechSource
 import com.example.accounting.core.data.speech.LanguagePackController
 import com.example.accounting.core.data.speech.SpeechLanguagePack
 import com.example.accounting.core.data.speech.SpeechDiagnostics
 import com.example.accounting.core.data.speech.SpeechProbe
+import com.example.accounting.core.data.speech.SettingsVoicePreferences
+import com.example.accounting.core.data.speech.VoicePreferences
+import com.example.accounting.core.data.speech.createVoiceSpeech
 import com.example.accounting.core.data.speech.SpeechSource
 import com.example.accounting.core.domain.ChartOfAccounts
 import com.example.accounting.core.domain.PartyAccountResolver
@@ -72,9 +74,21 @@ object DataModule {
     @Singleton
     fun provideNlParserProvider(): NlParserProvider = NlParserHttpProvider()
 
-    /** Unscoped on purpose: each VoiceViewModel owns its recognizer and destroys it in onCleared. Swap to CloudSpeechSourceStub or a cloud impl here. */
     @Provides
-    fun provideSpeechSource(@ApplicationContext context: Context): SpeechSource = AndroidSpeechSource(context)
+    @Singleton
+    fun provideVoicePreferences(settings: SettingsRepository, config: ConfigStore): VoicePreferences =
+        SettingsVoicePreferences(settings, config)
+
+    /**
+     * Unscoped on purpose: each VoiceViewModel owns its engines (on-device, cloud) and releases them in onCleared.
+     * Routing between them follows the voice engine setting (see RoutingSpeechSource).
+     */
+    @Provides
+    fun provideSpeechSource(
+        @ApplicationContext context: Context,
+        prefs: VoicePreferences,
+        config: ConfigStore,
+    ): SpeechSource = createVoiceSpeech(context, prefs) { config.current }
 
     /** Last voice error for the Settings diagnostics card. Process-wide, so it is a singleton. */
     @Provides

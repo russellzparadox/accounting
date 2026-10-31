@@ -4,8 +4,6 @@ import android.content.Intent
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -18,16 +16,6 @@ import org.robolectric.annotation.Config
 @Config(sdk = [34])
 class SpeechSourceTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-
-    @Test
-    fun cloudStubRefusesStartAndEmitsNothing() = runBlocking {
-        val stub = CloudSpeechSourceStub()
-
-        assertEquals(SpeechStartResult.UNSUPPORTED, stub.start())
-        stub.stop()
-        stub.release()
-        assertTrue(stub.events.toList().isEmpty())
-    }
 
     @Test
     fun startWithoutRecordAudioPermissionIsRefused() {

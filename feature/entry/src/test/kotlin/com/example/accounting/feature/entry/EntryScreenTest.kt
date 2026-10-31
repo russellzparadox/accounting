@@ -32,6 +32,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
 import com.example.accounting.core.data.db.AppDatabase
+import com.example.accounting.core.data.speech.SpeechEngine
 import com.example.accounting.core.data.nlp.NlParserProvider
 import com.example.accounting.core.data.repo.CommittedDoc
 import com.example.accounting.core.data.repo.LedgerRepository
@@ -475,5 +476,69 @@ class EntryScreenTest {
         const val TIMEOUT_MS = 10_000L
         val SODA_TOMAN_TEXT: String = MoneyFormat.format(SODA_RIAL, AmountUnit.TOMAN)
         val clock: Clock = Clock.fixed(Instant.parse("2026-01-10T08:00:00Z"), ZoneId.of("Asia/Tehran"))
+    }
+
+
+    @Test
+    fun listeningLabelNamesTheCloudEngine() {
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(listening = true, engine = SpeechEngine.CLOUD),
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.input_listening_engine, str(R.string.voice_engine_cloud))).assertIsDisplayed()
+    }
+
+    @Test
+    fun listeningLabelNamesTheDeviceEngine() {
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(listening = true, engine = SpeechEngine.ON_DEVICE),
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.input_listening_engine, str(R.string.voice_engine_device))).assertIsDisplayed()
+    }
+
+    @Test
+    fun cloudConsentDialogShowsTheConsentTextAndConfirmDispatchesIt() {
+        val dispatched = mutableListOf<VoiceAction>()
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(consentRequired = true),
+                    onVoiceAction = { dispatched += it },
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.voice_consent_body)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.voice_consent_confirm)).performClick()
+        assertEquals(listOf<VoiceAction>(VoiceAction.ConfirmCloudConsent), dispatched)
+    }
+
+    @Test
+    fun cloudConsentCancelDispatchesDismiss() {
+        val dispatched = mutableListOf<VoiceAction>()
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(consentRequired = true),
+                    onVoiceAction = { dispatched += it },
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.voice_consent_cancel)).performClick()
+        assertEquals(listOf<VoiceAction>(VoiceAction.DismissCloudConsent), dispatched)
     }
 }

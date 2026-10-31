@@ -148,9 +148,15 @@ private fun errorLabelRes(kind: SpeechErrorKind): Int = when (kind) {
     SpeechErrorKind.NETWORK -> R.string.speech_err_network
     SpeechErrorKind.UNSUPPORTED -> R.string.speech_err_unsupported
     SpeechErrorKind.OTHER -> R.string.speech_err_other
+    SpeechErrorKind.CLOUD_UNAVAILABLE -> R.string.speech_err_cloud_unavailable
+    SpeechErrorKind.CLOUD_UNAUTHORIZED -> R.string.speech_err_cloud_unauthorized
+    SpeechErrorKind.CLOUD_RATE_LIMITED -> R.string.speech_err_cloud_rate_limited
+    SpeechErrorKind.CLOUD_TOO_LARGE -> R.string.speech_err_cloud_too_large
+    SpeechErrorKind.CLOUD_NOT_CONFIGURED -> R.string.speech_err_cloud_not_configured
 }
 
 private fun engineRes(engine: SpeechEngine): Int = when (engine) {
     SpeechEngine.ON_DEVICE -> R.string.speech_engine_on_device
     SpeechEngine.SYSTEM -> R.string.speech_engine_system
+    SpeechEngine.CLOUD -> R.string.speech_engine_cloud
 }

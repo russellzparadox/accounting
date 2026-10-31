@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.accounting.core.data.speech.PackEvent
 import com.example.accounting.core.data.speech.PackStatus
 import com.example.accounting.core.data.speech.SpeechDiagnostics
+import com.example.accounting.core.data.speech.SpeechEngine
 import com.example.accounting.core.data.speech.SpeechErrorKind
 import com.example.accounting.core.data.speech.SpeechEvent
 import com.example.accounting.core.data.speech.SpeechLanguagePack
 import com.example.accounting.core.data.speech.SpeechSource
 import com.example.accounting.core.data.speech.SpeechStartResult
+import com.example.accounting.core.data.speech.VoiceEngine
+import com.example.accounting.core.data.speech.VoicePreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +31,12 @@ sealed interface VoiceAction {
 
     /** Starts the fa-IR language-pack download (API 33+). */
     data object DownloadLanguagePack : VoiceAction
+
+    /** The user accepted the cloud consent dialog: remember it and start the session that asked. */
+    data object ConfirmCloudConsent : VoiceAction
+
+    /** The user declined the cloud consent dialog: nothing starts. */
+    data object DismissCloudConsent : VoiceAction
 }
 
 /**
@@ -63,6 +72,12 @@ data class VoiceUiState(
     val errorCode: Int? = null,
     val transcript: VoiceTranscript? = null,
     val pack: PackUi = PackUi.None,
+    /** Engine of the current or last session. Shown as a small label while listening. */
+    val engine: SpeechEngine? = null,
+    /** Cloud audio is about to be used for the first time: the consent dialog is open. */
+    val consentRequired: Boolean = false,
+    /** Recording is being transcribed (cloud). Mic is off, the field is left alone. */
+    val processing: Boolean = false,
 )
 
 /**
@@ -74,6 +89,7 @@ class VoiceViewModel @Inject constructor(
     private val speech: SpeechSource,
     private val diagnostics: SpeechDiagnostics,
     private val languagePack: SpeechLanguagePack,
+    private val prefs: VoicePreferences,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(VoiceUiState())
@@ -82,6 +98,9 @@ class VoiceViewModel @Inject constructor(
     /** Text already in the input when the current session started. */
     private var base = ""
     private var seq = 0
+
+    /** Text in the input when the mic was tapped, while the consent dialog is open. */
+    private var pendingText: String? = null
 
     init {
         viewModelScope.launch { speech.events.collect { handle(it) } }
@@ -92,18 +111,48 @@ class VoiceViewModel @Inject constructor(
             is VoiceAction.Start -> start(action.currentText)
             VoiceAction.Stop -> speech.stop()
             VoiceAction.DownloadLanguagePack -> downloadPack()
+            VoiceAction.ConfirmCloudConsent -> confirmConsent()
+            VoiceAction.DismissCloudConsent -> {
+                pendingText = null
+                mutableState.update { it.copy(consentRequired = false) }
+            }
         }
     }
 
     private fun start(currentText: String) {
-        if (mutableState.value.listening) return
+        val current = mutableState.value
+        if (current.listening || current.processing || current.consentRequired) return
+        if (needsCloudConsent()) {
+            pendingText = currentText
+            mutableState.update { it.copy(consentRequired = true) }
+            return
+        }
+        startNow(currentText)
+    }
+
+    /** Cloud audio may leave the phone: needs a saved backend and the engine setting allowing it, and no earlier consent. */
+    private fun needsCloudConsent(): Boolean =
+        prefs.engine != VoiceEngine.DEVICE_ONLY && prefs.cloudConfigured && !prefs.cloudConsented
+
+    private fun confirmConsent() {
+        val text = pendingText ?: return
+        pendingText = null
+        prefs.acceptCloudConsent()
+        mutableState.update { it.copy(consentRequired = false) }
+        startNow(text)
+    }
+
+    private fun startNow(currentText: String) {
         base = currentText
+        // Reset before speech.start(): the engine may report EngineChanged synchronously inside it.
+        mutableState.update { it.copy(engine = null, processing = false) }
         val error = when (speech.start()) {
             SpeechStartResult.STARTED -> null
             SpeechStartResult.BUSY -> SpeechErrorKind.BUSY
             SpeechStartResult.UNAVAILABLE -> SpeechErrorKind.NO_RECOGNIZER_INSTALLED
             SpeechStartResult.NO_PERMISSION -> SpeechErrorKind.NO_PERMISSION
             SpeechStartResult.UNSUPPORTED -> SpeechErrorKind.UNSUPPORTED
+            SpeechStartResult.NOT_CONFIGURED -> SpeechErrorKind.CLOUD_NOT_CONFIGURED
         }
         if (error != null) diagnostics.recordError(error, null)
         mutableState.update {
@@ -116,17 +165,25 @@ class VoiceViewModel @Inject constructor(
             is SpeechEvent.Partial -> showText(event.text)
             is SpeechEvent.Final -> {
                 showText(event.text)
-                mutableState.update { it.copy(listening = false, error = null, errorCode = null) }
+                mutableState.update {
+                    it.copy(listening = false, error = null, errorCode = null, processing = false)
+                }
+            }
+            SpeechEvent.Processing -> mutableState.update {
+                it.copy(listening = false, error = null, errorCode = null, processing = true)
             }
             is SpeechEvent.Error -> failed(event.kind, event.code)
-            is SpeechEvent.EngineChanged -> diagnostics.recordEngine(event.engine)
+            is SpeechEvent.EngineChanged -> {
+                diagnostics.recordEngine(event.engine)
+                mutableState.update { it.copy(engine = event.engine) }
+            }
         }
     }
 
     private fun failed(kind: SpeechErrorKind, code: Int?) {
         diagnostics.recordError(kind, code)
         mutableState.update {
-            it.copy(listening = false, error = kind, errorCode = code, pack = PackUi.None)
+            it.copy(listening = false, error = kind, errorCode = code, pack = PackUi.None, processing = false)
         }
         if (kind == SpeechErrorKind.LANGUAGE_PACK_MISSING) checkPack()
     }

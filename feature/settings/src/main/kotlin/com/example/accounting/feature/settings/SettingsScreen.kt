@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.accounting.core.data.speech.VoiceEngine
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.PersianDigits
 import com.example.accounting.feature.settings.onboarding.PrivacyPoints
@@ -152,6 +153,7 @@ fun SettingsScreen(
             }
         }
         UnitSection(unit = state.amountUnit, onSelect = { onAction(SettingsAction.SetAmountUnit(it)) })
+        VoiceSection(selected = state.voiceEngine, onSelect = { onAction(SettingsAction.SetVoiceEngine(it)) })
         FiscalSection(state = state, onAction = onAction)
         Column(
             modifier = Modifier.onGloballyPositioned { coordinates ->
@@ -231,6 +233,23 @@ private fun UnitSection(unit: AmountUnit, onSelect: (AmountUnit) -> Unit) {
         }
         OptionRow(stringResource(R.string.unit_rial), selected = unit == AmountUnit.RIAL) {
             onSelect(AmountUnit.RIAL)
+        }
+    }
+}
+
+@Composable
+private fun VoiceSection(selected: VoiceEngine, onSelect: (VoiceEngine) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        SectionTitle(stringResource(R.string.section_voice))
+        BodyText(stringResource(R.string.voice_engine_help))
+        OptionRow(stringResource(R.string.voice_engine_auto), selected = selected == VoiceEngine.AUTO) {
+            onSelect(VoiceEngine.AUTO)
+        }
+        OptionRow(stringResource(R.string.voice_engine_device_only), selected = selected == VoiceEngine.DEVICE_ONLY) {
+            onSelect(VoiceEngine.DEVICE_ONLY)
+        }
+        OptionRow(stringResource(R.string.voice_engine_cloud_only), selected = selected == VoiceEngine.CLOUD_ONLY) {
+            onSelect(VoiceEngine.CLOUD_ONLY)
         }
     }
 }

@@ -3,6 +3,7 @@ package com.example.accounting.core.data.config
 import android.content.Context
 import com.example.accounting.core.domain.settings.AppSettings
 import com.example.accounting.core.domain.settings.AppSettingsCodec
+import com.example.accounting.core.data.speech.VoiceEngine
 import com.example.accounting.core.persian.AmountUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,14 @@ class SettingsRepository(context: Context) {
 
     /** Latest settings. Emits the current value on collect and after every change. */
     val settings: StateFlow<AppSettings> = state.asStateFlow()
+
+    private val voiceEngineState = MutableStateFlow(VoiceEngine.decode(prefs.getString(KEY_VOICE_ENGINE, null)))
+
+    /** Voice input engine: AUTO by default. Emits on change. */
+    val voiceEngine: StateFlow<VoiceEngine> = voiceEngineState.asStateFlow()
+
+    /** The user has accepted the one-time cloud speech consent. Not reset by app updates. */
+    val cloudSttConsented: Boolean get() = prefs.getBoolean(KEY_CLOUD_STT_CONSENT, false)
 
     /** Synchronous read for ViewModels that act on a click (save, format). */
     val current: AppSettings get() = state.value
@@ -41,6 +50,15 @@ class SettingsRepository(context: Context) {
         publish()
     }
 
+    fun setVoiceEngine(engine: VoiceEngine) {
+        prefs.edit().putString(KEY_VOICE_ENGINE, engine.name).apply()
+        voiceEngineState.value = engine
+    }
+
+    fun acceptCloudStt() {
+        prefs.edit().putBoolean(KEY_CLOUD_STT_CONSENT, true).apply()
+    }
+
     private fun publish() {
         state.value = read()
     }
@@ -56,5 +74,7 @@ class SettingsRepository(context: Context) {
         const val KEY_UNIT = "amount_unit"
         const val KEY_FISCAL_YEAR = "fiscal_year"
         const val KEY_ONBOARDING = "onboarding_accepted"
+        const val KEY_VOICE_ENGINE = "voice_engine"
+        const val KEY_CLOUD_STT_CONSENT = "cloud_stt_consent"
     }
 }

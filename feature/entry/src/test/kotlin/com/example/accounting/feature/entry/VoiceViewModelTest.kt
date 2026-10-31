@@ -26,7 +26,7 @@ class VoiceViewModelTest {
     private val speech = FakeSpeechSource()
     private val diagnostics = SpeechDiagnostics()
     private val pack = FakeLanguagePack()
-    private val vm = VoiceViewModel(speech, diagnostics, pack)
+    private val vm = VoiceViewModel(speech, diagnostics, pack, FakeVoicePreferences())
 
     /** Delivers queued main-looper work, so flow emissions are visible to assertions. */
     private fun emit(event: SpeechEvent) {

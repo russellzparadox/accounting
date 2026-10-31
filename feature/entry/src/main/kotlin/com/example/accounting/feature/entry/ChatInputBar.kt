@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
+import com.example.accounting.core.data.speech.SpeechEngine
 import com.example.accounting.core.data.speech.SpeechErrorKind
 import com.example.accounting.core.persian.PersianDigits
 
@@ -67,6 +68,10 @@ fun ChatInputBar(
     onPackDownload: () -> Unit = {},
     /** Null hides the «تنظیمات ورودی صدا» button (no settings screen to open on this device). */
     onOpenVoiceSettings: (() -> Unit)? = null,
+    /** Engine of the running session, shown as a small label while listening. */
+    voiceEngine: SpeechEngine? = null,
+    /** Cloud recording is being transcribed: mic off, field read-only. */
+    voiceProcessing: Boolean = false,
 ) {
     val sendDescription = stringResource(R.string.input_send_cd)
     Column(
@@ -79,14 +84,14 @@ fun ChatInputBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            MicButton(listening = listening, enabled = !busy, onClick = onMicClick)
+            MicButton(listening = listening, enabled = !busy && !voiceProcessing, onClick = onMicClick)
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 56.dp),
-                readOnly = busy || listening,
+                readOnly = busy || listening || voiceProcessing,
                 placeholder = {
                     Text(
                         text = stringResource(R.string.input_hint),
@@ -120,6 +125,8 @@ fun ChatInputBar(
             pack = voicePack,
             onPackDownload = onPackDownload,
             onOpenVoiceSettings = onOpenVoiceSettings,
+            engine = voiceEngine,
+            processing = voiceProcessing,
         )
     }
 }
@@ -167,11 +174,26 @@ private fun VoiceStatus(
     pack: PackUi,
     onPackDownload: () -> Unit,
     onOpenVoiceSettings: (() -> Unit)?,
+    engine: SpeechEngine?,
+    processing: Boolean,
 ) {
     val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
+    if (processing) {
+        Text(
+            text = stringResource(R.string.voice_processing),
+            style = MaterialTheme.typography.bodyMedium,
+            color = mutedColor,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 4.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+        )
+        return
+    }
     if (listening) {
         Text(
-            text = stringResource(R.string.input_listening),
+            text = engine?.let { stringResource(R.string.input_listening_engine, engineLabel(it)) }
+                ?: stringResource(R.string.input_listening),
             style = MaterialTheme.typography.bodyMedium,
             color = mutedColor,
             modifier = Modifier
@@ -272,3 +294,9 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawMic(tint: Color
         strokeWidth = stroke,
     )
 }
+
+/** Short engine name for the listening line: «ابری» for the cloud, «دستگاه» for the phone's recognizer. */
+@Composable
+private fun engineLabel(engine: SpeechEngine): String = stringResource(
+    if (engine == SpeechEngine.CLOUD) R.string.voice_engine_cloud else R.string.voice_engine_device,
+)

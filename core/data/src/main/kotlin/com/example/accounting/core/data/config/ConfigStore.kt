@@ -34,6 +34,9 @@ class ConfigStore(
     /** Current config. Emits the latest value on collect and after every [save]. */
     val config: Flow<BackendConfig> = state.asStateFlow()
 
+    /** Synchronous read of the latest config, for click-time decisions (voice engine routing). */
+    val current: BackendConfig get() = state.value
+
     fun save(config: BackendConfig) {
         val normalized = BackendConfig(config.baseUrl.trim(), config.token.trim())
         prefs.edit()

@@ -1,5 +1,5 @@
 # VOICE
-Status: v1 on-device with one fallback to the system recognizer (T09b). Cloud STT not built (stub only).
+Status: on-device with one fallback to the system recognizer (T09b). Cloud STT via the backend (T09c): code done, real-mic and real-provider accuracy unverified (see checklist).
 
 ## API (`core/data/.../speech/`)
 - `SpeechSource` (interface): `events: Flow<SpeechEvent>` (never completes), `start(): SpeechStartResult`, `stop()`, `release()`. Main thread only. One session at a time.
@@ -26,7 +26,7 @@ Status: v1 on-device with one fallback to the system recognizer (T09b). Cloud ST
   - 12/13: `LANGUAGE_PACK_MISSING`.
   - rest: `OTHER`.
 - `recognizerIntent(onDevice)`: fa-IR, partial results on, max 3 results. `EXTRA_PREFER_OFFLINE` only for the system recognizer.
-- `CloudSpeechSourceStub`: `start()` returns `UNSUPPORTED`, emits nothing.
+- Cloud engine (T09c): see section "Cloud engine (T09c)" below.
 - Bound in `app/.../di/DataModule.kt`. `AndroidSpeechSource` is unscoped (one per `VoiceViewModel`). `SpeechDiagnostics`, `SpeechLanguagePack` (`LanguagePackController`) and `SpeechProbe` are singletons.
 
 ## Fallback chain (`AndroidSpeechSource`)
@@ -94,7 +94,7 @@ Manifest: `RECORD_AUDIO`. Package visibility: `<queries>` for `android.speech.Re
 - The fallback fires only on the codes above. Other on-device failures do not retry on the system recognizer.
 - The download on API 33 has no progress. If the recognizer is destroyed mid-download the platform may cancel it.
 - `checkRecognitionSupport` and `triggerModelDownload` are called on the main thread. Lint NewApi is guarded by inline `SDK_INT` checks, not by annotations (no `androidx.annotation` in the catalog).
-- No cloud implementation. Swap the binding in `DataModule` to add one (T09c).
+- Cloud engine: no live provider test in CI. Accuracy of Persian transcription through the backend is unverified until the manual checklist (T09c).
 
 ## Manual device checklist (not testable in CI)
 Persian recognition depends on the Google app and its offline fa pack, and may need internet. Run on a real phone with the CI APK (`docs/CI.md`).
@@ -109,3 +109,41 @@ Persian recognition depends on the Google app and its offline fa pack, and may n
 - [ ] Settings, About: «تشخیص گفتار» card shows the facts. `کپی گزارش` pastes the report. `بررسی دوباره` refreshes.
 - [ ] Font scale 200%: status block wraps, nothing clipped, mic and buttons tappable.
 - [ ] TalkBack: mic reads `ضبط صدا`; while listening `توقف ضبط`; status line announced; download button reads its label.
+
+## Cloud engine (T09c)
+- Wiring: `DataModule.provideSpeechSource` -> `createVoiceSpeech` (core:data `speech/VoiceSpeech.kt`) = `RoutingSpeechSource(local = AndroidSpeechSource, cloud = CloudSpeechSource, prefs = VoicePreferences)`.
+- Setting `VoiceEngine` (SettingsRepository key `voice_engine`, default AUTO), in Settings under «ورودی صدا»:
+  - `AUTO` «خودکار»: on-device/system first. Fallback to cloud ONCE per session, only when the local attempt fails with NO_RECOGNIZER_INSTALLED, LANGUAGE_PACK_MISSING or NETWORK, and a backend is saved and consent is given. The local error is not shown; `EngineChanged(CLOUD)` is.
+  - `DEVICE_ONLY` «فقط روی دستگاه»: never uploads.
+  - `CLOUD_ONLY` «فقط ابری»: always records and uploads.
+- `CloudSpeechSource`: `MediaRecorder` MPEG-4/AAC, 16 kHz mono, 64 kbps, to `cacheDir/stt-<uuid>.m4a`. Auto-stop at 30 s. `stop()` ends recording and uploads. Events: `Processing` (not text: the field is left alone), then `Final(text)` or `Error(kind)`. Temp file deleted on every path (success, failure, no-audio, release).
+- Upload (`TranscriptionHttp`): `POST {baseUrl}/v1/audio/transcriptions`, multipart `file` (audio/mp4, `audio.m4a`), `language=fa`, `response_format=json`, `Authorization: Bearer <token>`. No model field (the server picks it). Status mapping: 401/403 CLOUD_UNAUTHORIZED, 413 CLOUD_TOO_LARGE, 429 CLOUD_RATE_LIMITED, 501 CLOUD_NOT_CONFIGURED, other 4xx OTHER, 5xx and network CLOUD_UNAVAILABLE.
+- Consent: the first time cloud may be used (backend saved, engine not DEVICE_ONLY, consent not yet given), tapping the mic shows «صدای شما برای تبدیل به متن به سرور ارسال می‌شود». «موافقم» stores consent and starts. «فعلاً نه» starts nothing. Consent is stored once (`cloud_stt_consent`).
+- UI: while listening the status line names the engine («ابری» / «دستگاه»). During upload it shows «در حال تبدیل صدا به متن…» and the mic is off. Text only fills the field. Nothing is submitted.
+- Stop on background (ON_STOP) is a normal Stop: a recording in progress is uploaded. Documented choice.
+- Deviation from the T09c text: the upload status is a `SpeechEvent.Processing` event, not `Partial("در حال تبدیل…")`, so the status never lands in the input field.
+
+### Privacy (what leaves the phone)
+- Text and voice follow the same rule: nothing is sent unless the backend is configured.
+- Audio is sent only by the cloud engine: in CLOUD_ONLY always, in AUTO only after the on-device engine fails and consent is given. Never in DEVICE_ONLY.
+- The app does not store audio. The temp file is deleted after the upload attempt.
+- What the backend and its speech provider do with audio depends on the server you configured (`STT_BASE_URL`, see docs/BACKEND.md).
+- On-device recognition may use the internet on some phones (the phone's speech service decides). This is unchanged.
+
+### Tests
+- core:data: `CloudSpeechSourceTest` (fake recorder + transcriber: permission, config, busy, upload mapping, temp-file deletion, auto-stop), `RoutingSpeechSourceTest` (mode routing, one AUTO fallback, consent/config gates, inactive events dropped), `TranscriptionHttpTest` (MockWebServer: bearer, multipart fields, no model field, status mapping, unreachable), `VoiceEngineTest` (persisted setting and consent).
+- feature:entry: `VoiceConsentTest` (consent gate, decline, processing, engine label, typed cloud errors), `VoiceViewModelTest` and `EntryViewModelTest` (constructor updated with `FakeVoicePreferences`), `EntryScreenTest` (cloud/device label, consent dialog confirm and cancel).
+- Not tested: a real microphone, a real `MediaRecorder`, a real provider.
+
+### Manual checklist for the user (cloud, T09c)
+Needs a running backend with STT configured, and a phone that can reach it.
+- [ ] Backend: set `STT_BASE_URL` (and `STT_API_KEY` if the provider needs one), `STT_MODEL`, run `npm start`. `curl` the transcription route with a small Persian clip; expect `{"text": ...}`.
+- [ ] App: Settings > «ورودی صدا» > «فقط ابری». In Settings, the backend URL and token are set (same as the parser).
+- [ ] Tap the mic. The consent dialog shows «صدای شما برای تبدیل به متن به سرور ارسال می‌شود». Tap «موافقم». The label says «ابری» while listening.
+- [ ] Say `۴ قوطی نوشابه روی هم پانصد هزار تومان خریدم`. The status shows «در حال تبدیل صدا به متن…», then the text fills the field. Nothing is sent. Send it and check the draft shows `۵۰۰٬۰۰۰ تومان`.
+- [ ] Stop the backend. Tap the mic. The message «سرور تبدیل صدا در دسترس نیست…» appears. Typing still works.
+- [ ] Set the token to a wrong value. The unauthorized message appears, and the token message names the settings.
+- [ ] Set «فقط روی دستگاه». Tap the mic. No upload happens (check the backend log has no `stt` line).
+- [ ] Set «خودکار» and remove the backend URL. Tap the mic: no consent dialog, on-device behaviour unchanged.
+- [ ] Background the app while recording: the recording ends and uploads (documented choice). No crash.
+

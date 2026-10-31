@@ -10,7 +10,9 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +69,34 @@ fun SpeechErrorKind.messageRes(): Int = when (this) {
     SpeechErrorKind.NETWORK -> R.string.voice_error_network
     SpeechErrorKind.UNSUPPORTED -> R.string.voice_error_unsupported
     SpeechErrorKind.OTHER -> R.string.voice_error_generic
+    SpeechErrorKind.CLOUD_UNAVAILABLE -> R.string.voice_error_cloud_unavailable
+    SpeechErrorKind.CLOUD_UNAUTHORIZED -> R.string.voice_error_cloud_unauthorized
+    SpeechErrorKind.CLOUD_RATE_LIMITED -> R.string.voice_error_cloud_rate_limited
+    SpeechErrorKind.CLOUD_TOO_LARGE -> R.string.voice_error_cloud_too_large
+    SpeechErrorKind.CLOUD_NOT_CONFIGURED -> R.string.voice_error_cloud_not_configured
+}
+
+/**
+ * One-time consent before cloud audio is used: the audio leaves the phone for the backend.
+ * Shown by the voice view model's consentRequired flag. Confirm stores the consent and starts the session.
+ */
+@Composable
+fun CloudConsentDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.voice_consent_title), style = MaterialTheme.typography.titleLarge) },
+        text = { Text(stringResource(R.string.voice_consent_body), style = MaterialTheme.typography.bodyLarge) },
+        confirmButton = {
+            Button(onClick = onConfirm, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.voice_consent_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.voice_consent_cancel))
+            }
+        },
+    )
 }
 
 /** Bottom sheet for the microphone permission. The system dialog is opened only from [onRequest]. */

@@ -16,10 +16,23 @@ enum class SpeechErrorKind {
     NETWORK,
     UNSUPPORTED,
     OTHER,
+    /** Cloud: server unreachable, timed out, or a 5xx. */
+    CLOUD_UNAVAILABLE,
+    /** Cloud: the proxy token was refused (401/403). */
+    CLOUD_UNAUTHORIZED,
+    /** Cloud: the server or its speech provider is rate limiting. */
+    CLOUD_RATE_LIMITED,
+    /** Cloud: the recording exceeded the server's upload limit. */
+    CLOUD_TOO_LARGE,
+    /** Cloud: no backend URL or token saved, or the server has STT disabled (501). */
+    CLOUD_NOT_CONFIGURED,
 }
 
-/** Which recognizer the current attempt uses. ON_DEVICE = API 31+ on-device model; SYSTEM = default service. */
-enum class SpeechEngine { ON_DEVICE, SYSTEM }
+/**
+ * Which engine the current attempt uses. ON_DEVICE = API 31+ on-device model; SYSTEM = default service;
+ * CLOUD = recording uploaded to the backend (/v1/audio/transcriptions).
+ */
+enum class SpeechEngine { ON_DEVICE, SYSTEM, CLOUD }
 
 /** Events of one session. Callers never submit on their own: a [Final] only fills the input. */
 sealed interface SpeechEvent {
@@ -28,6 +41,9 @@ sealed interface SpeechEvent {
 
     /** Final text of the session (first alternative). */
     data class Final(val text: String) : SpeechEvent
+
+    /** Recording finished and the text is being transcribed (cloud). Not text: the input field is left alone. */
+    data object Processing : SpeechEvent
 
     /** Session ended with an error. [code] is the platform SpeechRecognizer code, null when not from the recognizer. */
     data class Error(val kind: SpeechErrorKind, val code: Int? = null) : SpeechEvent
@@ -40,11 +56,11 @@ sealed interface SpeechEvent {
 }
 
 /** Immediate result of [SpeechSource.start], before any event arrives. UNAVAILABLE = no recognition service. */
-enum class SpeechStartResult { STARTED, BUSY, UNAVAILABLE, NO_PERMISSION, UNSUPPORTED }
+enum class SpeechStartResult { STARTED, BUSY, UNAVAILABLE, NO_PERMISSION, UNSUPPORTED, NOT_CONFIGURED }
 
 /**
- * Speech-to-text behind an interface. v1 impl is on-device with a single system fallback ([AndroidSpeechSource]);
- * cloud is a stub. [start], [stop] and [release] are called on the main thread. Only one session at a time.
+ * Speech-to-text behind an interface. On-device with a single system fallback ([AndroidSpeechSource]),
+ * cloud upload ([CloudSpeechSource]), and the engine routing between them ([RoutingSpeechSource]). [start], [stop] and [release] are called on the main thread. Only one session at a time.
  */
 interface SpeechSource {
     /** Events of the session in progress. Never completes. Collect before calling [start]. */

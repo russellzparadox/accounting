@@ -60,6 +60,21 @@
     <string name="input_voice_unclear">صدا واضح نبود. دوباره بگویید.</string>
     <string name="voice_error_no_recognizer">سرویس تشخیص گفتار روی این گوشی پیدا نشد. برنامه‌ی «Google» را نصب یا فعال کنید. تا آن موقع متن را تایپ کنید.</string>
     <string name="voice_error_language_pack">بسته‌ی فارسی تشخیص گفتار روی گوشی نصب نیست. دانلود کنید یا متن را تایپ کنید.</string>
+    <string name="input_listening_engine">در حال گوش دادن… (%1$s)</string>
+    <string name="voice_engine_cloud">ابری</string>
+    <string name="voice_engine_device">دستگاه</string>
+    <string name="voice_processing">در حال تبدیل صدا به متن…</string>
+    <string name="voice_error_cloud_unavailable">سرور تبدیل صدا در دسترس نیست. اینترنت را بررسی کنید یا متن را تایپ کنید.</string>
+    <string name="voice_error_cloud_unauthorized">توکن سرور پذیرفته نشد. توکن را در تنظیمات بررسی کنید.</string>
+    <string name="voice_error_cloud_rate_limited">تعداد درخواست‌های تبدیل صدا زیاد است. کمی بعد دوباره امتحان کنید.</string>
+    <string name="voice_error_cloud_too_large">ضبط خیلی طولانی بود. کوتاه‌تر بگویید یا متن را تایپ کنید.</string>
+    <string name="voice_error_cloud_not_configured">سرور برای تبدیل گفتار تنظیم نشده</string>
+    <string name="voice_consent_title">تبدیل صدا به متن</string>
+    <string name="voice_consent_body">صدای شما برای تبدیل به متن به سرور ارسال می‌شود.
+
+صدا روی گوشی ذخیره نمی‌شود و بعد از تبدیل پاک می‌شود. این کار فقط وقتی انجام می‌شود که تشخیص روی گوشی کار نکند، یا وقتی «فقط ابری» را انتخاب کرده‌اید. این پرسش فقط یک‌بار نشان داده می‌شود.</string>
+    <string name="voice_consent_confirm">موافقم</string>
+    <string name="voice_consent_cancel">فعلاً نه</string>
     <string name="voice_error_code">(کد %1$s)</string>
     <string name="voice_settings_action">تنظیمات ورودی صدا</string>
     <string name="voice_pack_download_action">دانلود بسته‌ی فارسی</string>

@@ -9,6 +9,7 @@ import com.example.accounting.core.data.config.ConfigStore
 import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.speech.SpeechProbe
 import com.example.accounting.core.data.speech.SpeechReport
+import com.example.accounting.core.data.speech.VoiceEngine
 import com.example.accounting.core.domain.backup.BackupReject
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
@@ -47,6 +48,8 @@ data class SettingsUi(
     val restored: Boolean = false,
     /** Speech diagnostics. Null while the fa-IR check runs. */
     val speech: SpeechReport? = null,
+    /** Voice input engine setting (AUTO by default). */
+    val voiceEngine: VoiceEngine = VoiceEngine.AUTO,
 )
 
 /** Every user action on the settings screen. Stream and file access come in as lambdas from the route. */
@@ -59,6 +62,7 @@ sealed interface SettingsAction {
     data class Export(val openOutput: () -> OutputStream?) : SettingsAction
     data class Restore(val openInput: () -> InputStream?) : SettingsAction
     data object RefreshSpeech : SettingsAction
+    data class SetVoiceEngine(val engine: VoiceEngine) : SettingsAction
 }
 
 @HiltViewModel
@@ -77,6 +81,9 @@ class SettingsViewModel @Inject constructor(
 
     init {
         refreshSpeech()
+        viewModelScope.launch {
+            settings.voiceEngine.collect { engine -> _ui.value = _ui.value.copy(voiceEngine = engine) }
+        }
         viewModelScope.launch {
             combine(settings.settings, configStore.config) { s, c -> s to c }.collect { (s, c) ->
                 config = c
@@ -106,6 +113,7 @@ class SettingsViewModel @Inject constructor(
             is SettingsAction.Export -> export(action.openOutput)
             is SettingsAction.Restore -> restore(action.openInput)
             SettingsAction.RefreshSpeech -> refreshSpeech()
+            is SettingsAction.SetVoiceEngine -> settings.setVoiceEngine(action.engine)
         }
     }
 
