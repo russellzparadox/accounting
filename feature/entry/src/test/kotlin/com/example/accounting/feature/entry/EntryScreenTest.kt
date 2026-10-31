@@ -50,7 +50,9 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import com.example.accounting.core.data.speech.SpeechErrorKind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -89,9 +91,47 @@ class EntryScreenTest {
         }
         compose.onNodeWithTag("dir").assertTextEquals("Rtl")
         compose.onNodeWithContentDescription(str(R.string.input_send_cd)).assertIsNotEnabled()
-        compose.onNodeWithContentDescription(
-            str(R.string.input_mic_disabled_cd, str(R.string.input_mic_cd), str(R.string.input_mic_soon)),
-        ).assertIsNotEnabled()
+        compose.onNodeWithContentDescription(str(R.string.input_mic_cd)).assertIsEnabled()
+    }
+
+    @Test
+    fun micListeningShowsStopLabelAndLocksSend() {
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(state = EntryUiState(), onAction = {}, voice = VoiceUiState(listening = true))
+            }
+        }
+        compose.onNodeWithContentDescription(str(R.string.input_mic_stop_cd)).assertIsEnabled()
+        compose.onNodeWithText(str(R.string.input_listening)).assertIsDisplayed()
+        compose.onNodeWithContentDescription(str(R.string.input_send_cd)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun voiceErrorIsShownAsText() {
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(error = SpeechErrorKind.NO_MATCH),
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.input_voice_unclear)).assertIsDisplayed()
+    }
+
+    @Test
+    fun micWithoutPermissionOpensRationaleAndDoesNotStartListening() {
+        val voiceActions = mutableListOf<VoiceAction>()
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(state = EntryUiState(), onAction = {}, onVoiceAction = { voiceActions += it })
+            }
+        }
+        compose.onNodeWithContentDescription(str(R.string.input_mic_cd)).performClick()
+        compose.onNodeWithText(str(R.string.mic_permission_body)).assertIsDisplayed()
+        compose.onNodeWithText(str(R.string.mic_permission_action)).assertIsDisplayed()
+        assertTrue(voiceActions.isEmpty())
     }
 
     @Test

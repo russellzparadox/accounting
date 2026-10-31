@@ -35,6 +35,8 @@ dependencies {
 
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    // RECORD_AUDIO permission launcher (rememberLauncherForActivityResult).
+    implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)

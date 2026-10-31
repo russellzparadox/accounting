@@ -1,6 +1,14 @@
 package com.example.accounting.feature.entry
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
@@ -52,11 +60,24 @@ import com.example.accounting.core.persian.PersianDigits
 fun EntryRoute(modifier: Modifier = Modifier) {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val voiceModel: VoiceViewModel = hiltViewModel()
+    val voice by voiceModel.state.collectAsStateWithLifecycle()
+    // Leaving the foreground ends a listening session; the recognizer is released in VoiceViewModel.onCleared.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, voiceModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) voiceModel.onAction(VoiceAction.Stop)
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     EntryScreen(
         state = state,
         onAction = viewModel::onAction,
         modifier = modifier,
         accountName = viewModel::accountName,
+        voice = voice,
+        onVoiceAction = voiceModel::onAction,
     )
 }
 
@@ -70,6 +91,8 @@ fun EntryScreen(
     onAction: (EntryAction) -> Unit,
     modifier: Modifier = Modifier,
     accountName: (String) -> String = { it },
+    voice: VoiceUiState = VoiceUiState(),
+    onVoiceAction: (VoiceAction) -> Unit = {},
 ) {
     var input by rememberSaveable { mutableStateOf("") }
     var showManual by rememberSaveable { mutableStateOf(false) }
@@ -77,6 +100,37 @@ fun EntryScreen(
     val notConfigured = state.items.any { it is ChatItem.Error && it.kind == EntryErrorKind.NOT_CONFIGURED }
     LaunchedEffect(notConfigured) {
         if (notConfigured) showConfig = true
+    }
+
+    // Recognized text fills the field. It is never sent here: the user taps send.
+    LaunchedEffect(voice.transcript) {
+        val transcript = voice.transcript
+        if (transcript != null) input = transcript.text
+    }
+
+    val context = LocalContext.current
+    var micSheet by rememberSaveable { mutableStateOf<MicSheet?>(null) }
+    var micPermanentlyDenied by rememberSaveable { mutableStateOf(false) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            micPermanentlyDenied = false
+            onVoiceAction(VoiceAction.Start(input))
+        } else {
+            // First denial: the system allows asking again. After that (or "don't ask again"), it does not.
+            val canAskAgain = context.findActivity()
+                ?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) == true
+            micPermanentlyDenied = !canAskAgain
+            micSheet = if (canAskAgain) null else MicSheet.DENIED_FOREVER
+        }
+    }
+    val onMicClick: () -> Unit = {
+        if (voice.listening) {
+            onVoiceAction(VoiceAction.Stop)
+        } else if (hasMicPermission(context)) {
+            onVoiceAction(VoiceAction.Start(input))
+        } else {
+            micSheet = if (micPermanentlyDenied) MicSheet.DENIED_FOREVER else MicSheet.RATIONALE
+        }
     }
 
     Scaffold(
@@ -90,8 +144,11 @@ fun EntryScreen(
                     onAction(EntryAction.Submit(input))
                     input = ""
                 },
-                sendEnabled = input.isNotBlank() && !state.busy,
+                sendEnabled = input.isNotBlank() && !state.busy && !voice.listening,
                 busy = state.busy,
+                listening = voice.listening,
+                voiceError = voice.error,
+                onMicClick = onMicClick,
                 modifier = Modifier.imePadding().navigationBarsPadding(),
             )
         },
@@ -113,6 +170,20 @@ fun EntryScreen(
                 onAction(action)
                 showManual = false
             },
+        )
+    }
+    micSheet?.let { sheet ->
+        MicPermissionSheet(
+            sheet = sheet,
+            onRequest = {
+                micSheet = null
+                micPermission.launch(Manifest.permission.RECORD_AUDIO)
+            },
+            onOpenSettings = {
+                micSheet = null
+                openAppSettings(context)
+            },
+            onDismiss = { micSheet = null },
         )
     }
     if (showConfig) {

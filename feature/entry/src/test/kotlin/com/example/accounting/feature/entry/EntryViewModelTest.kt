@@ -19,6 +19,8 @@ import com.example.accounting.core.domain.pipeline.ParsedIntent
 import com.example.accounting.core.domain.pipeline.ParserResult
 import com.example.accounting.core.domain.pipeline.PipelineError
 import com.example.accounting.core.persian.AmountUnit
+import com.example.accounting.core.data.speech.SpeechEvent
+import android.os.Looper
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -27,8 +29,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.robolectric.Shadows.shadowOf
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -259,6 +263,48 @@ class EntryViewModelTest {
         assertTrue(ledger.journal(jalaliYear).first().isEmpty())
     }
 
+    /**
+     * Voice path: the fake recognizer returns number words. The text fills the field through
+     * VoiceViewModel and is posted only when the ViewModel is told to submit. Nothing commits on its own.
+     */
+    @Test
+    fun spokenNumberWordsReachDraftAndNothingCommitsOnItsOwn() = runBlocking {
+        configure()
+        val speech = FakeSpeechSource()
+        val voice = VoiceViewModel(speech)
+        voice.onAction(VoiceAction.Start(""))
+        speech.emit(SpeechEvent.Final(SPOKEN_TEXT))
+        shadowOf(Looper.getMainLooper()).idle()
+        val spoken = checkNotNull(voice.state.value.transcript).text
+        assertEquals(SPOKEN_TEXT, spoken)
+        assertFalse(voice.state.value.listening)
+
+        val vm = viewModel(ScriptedParser(spokenIntent()))
+        vm.handle(EntryAction.Submit(spoken))
+
+        val card = vm.state.value.items.filterIsInstance<ChatItem.DraftCard>().single()
+        assertTrue(card.reasons.isEmpty())
+        assertEquals(SODA_RIAL, card.entry.debitTotal.rial)
+        assertTrue(vm.state.value.items.none { it is ChatItem.Committed })
+        assertTrue(ledger.journal(jalaliYear).first().isEmpty())
+    }
+
+    private fun spokenIntent() = ParserResult.Intent(
+        ParsedIntent(
+            intent = TransactionIntent(
+                type = TemplateId.PURCHASE_CASH,
+                amountRial = SODA_RIAL,
+                date = LocalDate.of(2026, 1, 10),
+                paidWith = PaidWith.CASH,
+                memo = "نوشابه",
+                confidence = 92,
+            ),
+            amountText = "پانصد هزار تومان",
+            amountValue = 500_000L,
+            amountUnit = AmountUnit.TOMAN,
+        ),
+    )
+
     /** Scripted [NlParser]: returns queued results in order and records every text it received. */
     private class ScriptedParser(vararg responses: ParserResult) : NlParser {
         private val queue = ArrayDeque(responses.toList())
@@ -277,6 +323,7 @@ class EntryViewModelTest {
 
     private companion object {
         const val SODA_TEXT = "۴ قوطی نوشابه روی هم ۵۰۰٬۰۰۰ تومان خریدم"
+        const val SPOKEN_TEXT = "۴ قوطی نوشابه روی هم پانصد هزار تومان خریدم"
 
         /** 500 000 toman = 5 000 000 rial. */
         const val SODA_RIAL = 5_000_000L

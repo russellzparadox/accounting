@@ -52,9 +52,25 @@
     <string name="input_hint">مثلاً: ۴ قوطی نوشابه روی هم ۵۰۰٬۰۰۰ تومان خریدم</string>
     <string name="input_send_cd">ارسال</string>
     <string name="input_mic_cd">ضبط صدا</string>
-    <string name="input_mic_soon">به‌زودی</string>
-    <string name="input_mic_disabled_cd">%1$s، %2$s</string>
+    <string name="input_mic_stop_cd">توقف ضبط</string>
+    <string name="input_listening">در حال گوش دادن…</string>
 
+    <!-- Voice errors (VoiceViewModel -> SpeechErrorKind). Shown as text under the input bar. -->
+    <string name="input_voice_unclear">صدا واضح نبود. دوباره بگویید.</string>
+    <string name="voice_error_unavailable">تشخیص گفتار روی این دستگاه در دسترس نیست. متن را تایپ کنید.</string>
+    <string name="voice_error_busy">تشخیص صدا هنوز مشغول است. چند لحظه بعد دوباره بگویید.</string>
+    <string name="voice_error_network">اتصال برقرار نشد. اینترنت را بررسی کنید یا متن را تایپ کنید.</string>
+    <string name="voice_error_unsupported">ضبط صدا در این نسخه فعال نیست. متن را تایپ کنید.</string>
+    <string name="voice_error_no_permission">دسترسی میکروفون لازم است. دوباره از دکمه‌ی میکروفون استفاده کنید.</string>
+    <string name="voice_error_generic">صدا پردازش نشد. دوباره بگویید یا متن را تایپ کنید.</string>
+
+    <!-- Microphone permission sheet (rationale, then permanently denied). -->
+    <string name="mic_rationale_title">ضبط صدا</string>
+    <string name="mic_permission_body">برای تبدیل صدا به متن به دسترسی میکروفون نیاز داریم. اگر اجازه ندهید، می‌توانید تراکنش را تایپ کنید.</string>
+    <string name="mic_permission_denied_body">دسترسی میکروفون رد شده است. برای ضبط صدا، آن را از تنظیمات برنامه فعال کنید.</string>
+    <string name="mic_permission_action">اجازه دسترسی</string>
+    <string name="mic_settings_action">باز کردن تنظیمات</string>
+    <string name="mic_permission_later_action">فعلاً نه</string>
     <!-- Confirmation card (DESIGN 5.3, 5.5). %1$s = amount with unit, %2$s = side word. -->
     <string name="side_debit">بدهکار</string>
     <string name="side_credit">بستانکار</string>
