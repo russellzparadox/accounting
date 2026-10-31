@@ -1,5 +1,5 @@
 # T01c — GitHub Actions CI + auto build
-Status: todo
+Status: in_progress
 Depends: T01
 Read first: CLAUDE.md, handouts/T01-android-scaffold.md
 Skills to invoke: none
