@@ -1,5 +1,5 @@
 # T11 — reports
-Status: in_progress
+Status: partial (CI green run 41198957224; PDF render unverified, see handouts/T11-reports.md)
 Depends: T10
 Read first: CLAUDE.md, handouts/T10-ledger-ui.md
 Skills to invoke: persian-writing:persian-writing, design:design-system, design:design-critique
