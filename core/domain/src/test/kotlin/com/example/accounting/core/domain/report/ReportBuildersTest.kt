@@ -71,8 +71,8 @@ class ReportBuildersTest {
         val table = JournalReport.build(ReportRange(null, null), docs, AmountUnit.RIAL)
         assertEquals(4, table.rows.size)
         assertEquals(listOf(1, 1, 2, 2), table.rows.map { (it[1] as ReportCell.Count).value })
-        assertEquals(listOf(1000L, 0L, 700L, 0L), amountsOf(table, 5))
-        assertEquals(listOf(0L, 1000L, 0L, 700L), amountsOf(table, 6))
+        assertEquals(listOf(1000L, 0L, 0L, 700L), amountsOf(table, 5))
+        assertEquals(listOf(0L, 1000L, 700L, 0L), amountsOf(table, 6))
         assertEquals(1700L, (table.totals!![5] as ReportCell.Amount).rial)
         assertTrue(table.balanced)
     }

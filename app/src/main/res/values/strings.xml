@@ -5,5 +5,6 @@
     <!-- Bottom bar. First item is the start (right) edge in RTL. -->
     <string name="nav_entry">ثبت</string>
     <string name="nav_journal">دفتر روزنامه</string>
+    <string name="nav_reports">گزارش‌ها</string>
     <string name="nav_accounts">حساب‌ها</string>
 </resources>

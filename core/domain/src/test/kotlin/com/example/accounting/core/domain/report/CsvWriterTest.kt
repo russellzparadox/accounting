@@ -37,11 +37,11 @@ class CsvWriterTest {
         val text = CsvWriter.write(
             table(AmountUnit.TOMAN, listOf(listOf(
                 ReportCell.Date(LocalDate.of(2025, 3, 21)),
-                ReportCell.Text("خرید، کاغذ"),
+                ReportCell.Text("خرید, کاغذ"),
                 ReportCell.Amount(5_000_000),
             ))),
         )
-        assertTrue(text.contains("1404/01/01,\"خرید، کاغذ\",500000\r\n"), text)
+        assertTrue(text.contains("1404/01/01,\"خرید, کاغذ\",500000\r\n"), text)
     }
 
     @Test

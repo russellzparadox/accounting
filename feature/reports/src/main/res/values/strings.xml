@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="reports_title">گزارش‌ها</string>
+    <string name="kind_trial">تراز آزمایشی</string>
+    <string name="kind_journal">دفتر روزنامه</string>
+    <string name="kind_ledger">دفتر کل</string>
+    <string name="report_back_cd">بازگشت</string>
+    <string name="report_account_code">کد حساب</string>
+    <string name="report_csv">خروجی CSV</string>
+    <string name="report_pdf">خروجی PDF</string>
+    <string name="report_share_title">اشتراک‌گذاری گزارش</string>
+    <string name="report_bad_dates">بازه‌ی تاریخ معتبر نیست. نمونه: ۱۴۰۵/۰۱/۰۱</string>
+    <string name="report_no_range">بازه‌ی انتخابی باید داخل سال مالی باشد.</string>
+    <string name="report_account_required">برای دفتر کل، کد حساب را وارد کنید.</string>
+    <string name="report_account_not_found">حسابی با این کد پیدا نشد.</string>
+    <string name="report_unbalanced">هشدار: جمع بدهکار و بستانکار برابر نیست.</string>
+    <string name="report_export_error">خروجی گرفته نشد. دوباره تلاش کنید.</string>
+    <string name="report_page">صفحه %1$s</string>
+</resources>

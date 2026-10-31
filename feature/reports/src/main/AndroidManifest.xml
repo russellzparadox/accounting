@@ -1,1 +1,16 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Share sheet hand-off for CSV and PDF exports (cacheDir/reports only). -->
+    <application>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.accounting.reportfiles"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/report_file_paths" />
+        </provider>
+    </application>
+
+</manifest>
