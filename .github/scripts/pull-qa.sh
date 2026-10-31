@@ -8,6 +8,10 @@ PKG=com.example.accounting
 DEST=qa-artifacts
 mkdir -p "$DEST"
 
+# Diagnostics (T13a FIX ROUND 3): is the app still installed after Gradle, and what is in files/qa?
+echo "::notice title=qa-diag::packages: $(adb shell pm list packages </dev/null 2>/dev/null | tr -d '\r' | grep -i accounting | tr '\n' ' ')"
+echo "::notice title=qa-diag::run-as ls -R files/qa: $(adb shell run-as "$PKG" ls -R files/qa </dev/null 2>&1 | tr -d '\r' | tr '\n' ' ' | head -c 1500)"
+
 echo "== run-as listing: files/qa (ls -la) =="
 adb shell run-as "$PKG" ls -la files/qa </dev/null 2>&1 | tr -d '\r' | head -60 || true
 adb shell run-as "$PKG" ls -la files </dev/null 2>&1 | tr -d '\r' | head -40 || true

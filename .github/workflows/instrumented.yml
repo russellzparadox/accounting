@@ -51,7 +51,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: "status=0; mkdir -p qa-artifacts; ./gradlew --stacktrace :app:connectedDebugAndroidTest > qa-artifacts/gradle-instrumented.log 2>&1 || status=$?; tail -n 60 qa-artifacts/gradle-instrumented.log; adb logcat -d -v threadtime > qa-artifacts/logcat-full.txt 2>&1 || echo 'adb logcat failed'; grep -E 'com[.]example[.]accounting|AndroidRuntime|TestRunner|androidx[.]test|Room|Hilt|FATAL' qa-artifacts/logcat-full.txt > qa-artifacts/logcat.txt || true; bash .github/scripts/pull-qa.sh || echo 'pull-qa.sh failed'; exit $status"
+          script: "status=0; mkdir -p qa-artifacts; ./gradlew --stacktrace -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true :app:connectedDebugAndroidTest > qa-artifacts/gradle-instrumented.log 2>&1 || status=$?; tail -n 60 qa-artifacts/gradle-instrumented.log; adb logcat -d -v threadtime > qa-artifacts/logcat-full.txt 2>&1 || echo 'adb logcat failed'; grep -E 'com[.]example[.]accounting|AndroidRuntime|TestRunner|androidx[.]test|Room|Hilt|FATAL' qa-artifacts/logcat-full.txt > qa-artifacts/logcat.txt || true; bash .github/scripts/pull-qa.sh || echo 'pull-qa.sh failed'; exit $status"
 
       # Gate: green only when every expected QA file was pulled from files/qa (10 screenshots, PDF, PDF page PNGs, CSV).
       - name: Check that QA screenshots, PDF, PDF pages and CSV were pulled
