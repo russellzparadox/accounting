@@ -1,5 +1,5 @@
 # T04 — room-persistence
-Status: in_progress
+Status: partial
 Depends: T03
 Read first: CLAUDE.md, handouts/T03-domain-core.md
 Skills to invoke: none
