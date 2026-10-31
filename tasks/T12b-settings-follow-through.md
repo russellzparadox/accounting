@@ -1,5 +1,5 @@
 # T12b — Make settings real everywhere
-Status: in_progress
+Status: done
 Depends: T12
 Read first: CLAUDE.md, handouts/T12-settings-onboarding.md (audit table + open issues), handouts/T10-ledger-ui.md, handouts/T10b-manual-journal-editor.md, handouts/T11-reports.md, handouts/T08-entry-ui.md, handouts/T08a-entry-viewmodel.md, handouts/T04-room-persistence.md, handouts/T01d-ci-green.md, docs/CI.md
 Skills to invoke: persian-writing:persian-writing, design:ux-copy (+ design:accessibility-review at code level)

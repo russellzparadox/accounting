@@ -23,7 +23,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T10b | manual-journal-editor | T08, T10 | done (CI green run 102, build #102; D1+D3 carried to T12) |
 | T11 | reports | T10 | done (CI green run 109, build #109; PDF render unverified -> T13; unit setting -> T12) |
 | T12 | settings-onboarding | T08, T10b, T11 | done (CI green run 115, build #115; follow-through in T12b) |
-| T12b | settings-follow-through | T12 | in_progress |
+| T12b | settings-follow-through | T12 | done (CI green run 41203285636, build #118; audit items 1-5 MET, 2 code-only sub-points) |
 | T13 | qa | T07, T08, T09, T10, T11, T12 | todo |
 | T14 | release-prep | T13 | todo |
 
