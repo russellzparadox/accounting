@@ -26,3 +26,8 @@ Skills to invoke: design:design-system, design:ux-copy, persian-writing:persian-
 
 ## Verify (commands)
 - `./gradlew test assembleDebug`
+
+## Carried over from T10b (main agent, binding)
+- D1: Jalali calendar picker dialog (year/month/day, `JalaliDate`, leap-aware, Persian month names) used by the manual journal editor date field AND by the journal date filter; keep the text field as an alternative input.
+- D3: amount input/display unit setting (toman default / rial) stored in `SettingsRepository`, honoured by the manual journal editor, quick manual entry sheet, entry draft card and reports (`MoneyFormat`); conversion only via T05 utilities, Long math.
+- Add UI tests for both. See `handouts/T10b-manual-journal-editor.md` rows D1, D3.

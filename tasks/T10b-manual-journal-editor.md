@@ -1,5 +1,5 @@
 # T10b — Manual journal editor (free-form سند حسابداری, no LLM, no backend)
-Status: partial (FIX ROUND 1 done; CI green 41197201498; PARTIAL D1 date picker, D3 rial input; see handouts/T10b-manual-journal-editor.md)
+Status: done (accepted by main agent; D1 date picker and D3 rial input mode carried to T12)
 Depends: T08, T10
 Read first: CLAUDE.md, handouts/T03-domain-core.md, handouts/T04-room-persistence.md, handouts/T08a-entry-viewmodel.md, handouts/T08-entry-ui.md, handouts/T10-ledger-ui.md, docs/DESIGN.md, docs/ACCOUNTING_RULES.md
 Skills to invoke: design:design-critique, design:accessibility-review, design:ux-copy, persian-writing:persian-writing
