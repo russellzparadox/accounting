@@ -20,12 +20,13 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T08 | entry-ui | T01b, T08a | todo |
 | T09 | voice-input | T08 | todo |
 | T10 | ledger-ui | T04, T08 | todo |
+| T10b | manual-journal-editor | T08, T10 | todo |
 | T11 | reports | T10 | todo |
 | T12 | settings-onboarding | T08 | todo |
 | T13 | qa | T07, T08, T09, T10, T11, T12 | todo |
 | T14 | release-prep | T13 | todo |
 
 ## Run order
-T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T11 -> T12 -> T13 -> T14
+T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T13 -> T14
 
 Files: `tasks/Txx-slug.md` (from `tasks/_TEMPLATE.md`), `handouts/Txx-slug.md` (from `handouts/_TEMPLATE.md`).
