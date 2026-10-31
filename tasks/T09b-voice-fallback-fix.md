@@ -1,5 +1,5 @@
 # T09b — Voice recognition fix: fallback chain, clear errors, language-pack download
-Status: in_progress
+Status: done
 Depends: T09, T12b
 Read first: CLAUDE.md, handouts/T09-voice-input.md, docs/VOICE.md, handouts/T12b-settings-follow-through.md, handouts/T01d-ci-green.md, docs/CI.md, `core/data/.../speech/AndroidSpeechSource.kt`, feature/entry voice VM + mic UI + strings
 Skills to invoke: persian-writing:persian-writing, design:ux-copy
