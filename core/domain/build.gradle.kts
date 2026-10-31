@@ -8,9 +8,11 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":core:persian"))
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.kotlin.test.junit5)
+    testImplementation(libs.kotlinx.coroutines.core)
 }
 
 tasks.test {
