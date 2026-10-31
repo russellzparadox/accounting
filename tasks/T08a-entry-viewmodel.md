@@ -31,3 +31,9 @@ Skills to invoke: persian-writing:persian-writing (all user-visible strings)
 
 ## Out of scope
 - Compose UI (T08), voice (T09), settings UI (T12), journal/ledger screens (T10).
+
+## FIX ROUND 1 (main agent)
+- CI run 41186975674 (head e1e7141, includes T08a code a96c19d) FAILED. Runs 65/66 were cancelled by pushes, so this is the first real verdict. Read the "Failure summary" step first (tail_lines <= 90), fix root causes only, no test weakening. Known unverified bits: lifecycle-viewmodel-ktx 2.9.4 coordinates, `javax.inject.Inject` availability in `feature:entry`/`core:data`, Hilt/KSP wiring in `feature:entry`, Robolectric config.
+- Also finish the paperwork: `handouts/T08a-entry-viewmodel.md` (exact public types: EntryAction, ChatItem, EntryUiState, EntryViewModel API, ConfigStore/BackendConfig, NlParserProvider, DataModule bindings, rules: clarification = original + answer combined, confirm claim flag/commit once, undo = reversal, manual path) and Status done in this file.
+- Known gap to document (do not fix here): party find-or-create occurs at draft time (inside `PostingEngine.post` called by `NlPipeline`), so an unconfirmed credit draft can create a party معین. Proposed fix for a later task: resolve parties lazily at confirm (needs a core:domain change).
+- IMPORTANT: never push while your previous push's run is still in progress (the workflow cancels in-flight runs). Wait for the run to complete (poll the public API `https://api.github.com/repos/russellzparadox/accounting/actions/runs/<id>` with `until` loops in Bash run_in_background, or short sleeps <= 50s). Max 5 pushes.
