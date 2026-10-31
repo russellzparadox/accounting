@@ -1,5 +1,5 @@
 # T11 — reports
-Status: todo
+Status: in_progress
 Depends: T10
 Read first: CLAUDE.md, handouts/T10-ledger-ui.md
 Skills to invoke: persian-writing:persian-writing, design:design-system, design:design-critique
