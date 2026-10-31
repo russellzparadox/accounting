@@ -1,5 +1,5 @@
 # T12 — settings-onboarding
-Status: todo
+Status: in_progress
 Depends: T08
 Read first: CLAUDE.md, handouts/T08-entry-ui.md
 Skills to invoke: design:design-system, design:ux-copy, persian-writing:persian-writing
