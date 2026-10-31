@@ -4,15 +4,15 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | ID | Name | Depends | Status |
 |----|------|---------|--------|
 | T00 | bootstrap | none | done |
-| T01 | android-scaffold | T00 | partial (build unverified, needs CI) |
+| T01 | android-scaffold | T00 | done (CI green) |
 | T01c | github-actions | T01 | done |
-| T01d | ci-green | T01,T01c,T03 | in_progress |
+| T01d | ci-green | T01,T01c,T03 | done |
 | T01b | design-system | T00 | done |
 | T02 | accounting-rules | T00 | done (needs accountant review) |
 | T03 | domain-core | T02, T01 | done (26 tests pass in scratch JVM project) |
 | T04 | room-persistence | T03 | todo |
 | T05 | persian-utils | T01 | todo |
-| T06 | backend-llm-proxy | T02 | todo |
+| T06 | backend-llm-proxy | T02, T03 | in_progress |
 | T07 | nl-pipeline | T03, T05, T06 | todo |
 | T08 | entry-ui | T01b, T04, T07 | todo |
 | T09 | voice-input | T08 | todo |
