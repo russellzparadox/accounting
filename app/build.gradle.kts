@@ -9,6 +9,14 @@ plugins {
 // CI passes -PbuildNumber=<github.run_number>. Local builds keep versionCode 1 / 0.1.0.
 val ciBuildNumber: Int? = findProperty("buildNumber")?.toString()?.toIntOrNull()
 
+// Release signing is optional and never stored in the repo. Each value is read from a gradle property
+// (-P<name>=...) or an environment variable of the same name. Without RELEASE_STORE_FILE, assembleRelease
+// produces an unsigned APK (CI does this; release.yml signs tags from repository secrets). docs/SIGNING.md.
+fun releaseSigningValue(name: String): String? =
+    (findProperty(name)?.toString() ?: System.getenv(name))?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile: String? = releaseSigningValue("RELEASE_STORE_FILE")
+
 android {
     namespace = "com.example.accounting"
     compileSdk = 36
@@ -22,9 +30,30 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = releaseSigningValue("RELEASE_STORE_PASSWORD")
+                keyAlias = releaseSigningValue("RELEASE_KEY_ALIAS")
+                keyPassword = releaseSigningValue("RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 (code shrinking, obfuscation) and resource shrinking. Rules: app/proguard-rules.pro.
+            // The mapping file is written to app/build/outputs/mapping/release/ (uploaded by CI).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            if (releaseStoreFile != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

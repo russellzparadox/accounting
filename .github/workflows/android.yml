@@ -60,6 +60,25 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+      # Release variant: R8 minify + resource shrink (app/build.gradle.kts, app/proguard-rules.pro).
+      # No signing env here, so the APK is unsigned; release.yml signs tags. A failing R8 build fails this job
+      # (and therefore skips publish): a red release build is never hidden.
+      - name: Assemble release (R8 minify + shrink)
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --stacktrace -PbuildNumber=${{ github.run_number }} assembleRelease 2>&1 | tee gradle-release.log
+
+      # Retrace key for crash stacks from the minified release (retrace with this mapping.txt).
+      - name: Upload R8 mapping (release-mapping)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mapping
+          path: app/build/outputs/mapping/release/
+          if-no-files-found: warn
+          retention-days: 90
+
       - name: Upload build reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -76,11 +95,15 @@ jobs:
       - name: Failure summary (short, read this first)
         if: failure()
         run: |
-          if [ ! -f gradle-build.log ]; then
-            echo "gradle-build.log missing; gradle step did not run"
+          if [ ! -f gradle-build.log ] && [ ! -f gradle-release.log ]; then
+            echo "gradle logs missing; gradle step did not run"
             exit 0
           fi
-          grep -E '^e: |^w: .*error|What went wrong|FAILURE' -A4 gradle-build.log | head -80 || true
+          for log in gradle-build.log gradle-release.log; do
+            [ -f "$log" ] || continue
+            echo "== $log =="
+            grep -E '^e: |^w: .*error|What went wrong|FAILURE|R8|Missing class' -A4 "$log" | head -80 || true
+          done
           echo "== failed unit tests =="
           python3 - <<'PY' || true
           import glob, xml.etree.ElementTree as ET
