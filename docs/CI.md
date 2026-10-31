@@ -6,6 +6,24 @@
 - `backend.yml`: push/PR touching `backend/**`. Node 20, `npm ci`, `npm test`, `npm run build`. Skips with a log line if `backend/package.json` is missing. `npm run build` needs a `build` script in `backend/package.json`.
 - `release.yml`: tag `v*`. `assembleRelease`, then signs with `apksigner` if signing secrets exist, else uploads unsigned. Creates a GitHub Release with the APK.
 - `dependabot.yml`: weekly updates for gradle, npm (`/backend`, inert until it exists), github-actions.
+- `instrumented.yml`: emulator QA. `workflow_dispatch` (Actions tab, Run workflow) + nightly schedule (default branch only). Never on push. Own concurrency group. Not required for releases.
+
+## Emulator QA (`instrumented.yml`)
+- How to run: Actions tab, `instrumented`, Run workflow, pick the branch. Takes about 15-25 min (emulator boot, Gradle, tests).
+- Emulator: API 34, x86_64, google_apis, pixel_6, KVM enabled by a udev rule, animations disabled.
+- Runs `./gradlew :app:connectedDebugAndroidTest`, then pulls the app's `files/qa/` folder with `adb`.
+- Artifacts (on the run page, Artifacts):
+  - `qa-artifacts`: `qa/*.png` = screenshots `01-entry-committed` ... `10-manual-editor`. `qa/trial-balance.pdf` (the real PdfExporter output). `qa/trial-balance-page-N.png` (each PDF page rendered by PdfRenderer). `qa/trial-balance.csv` (BOM + headers).
+  - `androidtest-reports`: JUnit XML and HTML from `connectedDebugAndroidTest`.
+- What each test proves:
+  - `RealAppFlowTest` (one method, real MainActivity, real Room file, Hilt, navigation): onboarding accepted through the UI, a 500,000 toman cash purchase through the quick manual sheet, the journal row with Persian digits, the document detail totals, the cash account ledger, reversal, trial balance preview gross totals (both sides 1,000,000 toman), unit switch to rial re-renders journal amounts, manual journal editor opens.
+  - `ReportExportTest`: the PDF is written by the real `PdfExporter`, has a `%PDF-` header and at least one page, and each page renders non-blank under `PdfRenderer` (not a proof of Persian shaping; see the audit in the T13a handout). The CSV starts with a UTF-8 BOM and has the Persian column headers.
+- Constraints:
+  - `RealAppFlowTest` must stay a single test method. The app's Room singleton lives for the whole process, so a second activity test would see the first one's data. `CleanAppStateRule` deletes the Room file, the `app_settings` prefs and the export cache before the Activity starts.
+  - `ReportExportTest` uses an in-memory database and never touches the app's file.
+  - Test tags on the quick manual sheet: `MANUAL_AMOUNT_FIELD_TAG`, `MANUAL_SUBMIT_TAG` (feature/entry `ManualEntrySheet.kt`). They attach no behaviour.
+- Local runs: `./gradlew :app:connectedDebugAndroidTest` needs a device or emulator. Google Maven is blocked in the cloud session, so the CI run is the only place these tests have compiled and run.
+- Reading a red emulator run: the `Check that QA screenshots...` step tells you whether any screenshots were pulled. The `Run instrumented tests` step ends with Gradle's status. Failures are in `androidtest-reports` (`app/build/outputs/androidTest-results`), and the job log has the Gradle lines.
 
 ## Secrets (optional, for signed release)
 - `KEYSTORE_BASE64` (base64 of the `.jks`/`.keystore`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.

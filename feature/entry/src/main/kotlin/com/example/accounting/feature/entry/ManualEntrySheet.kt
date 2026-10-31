@@ -28,6 +28,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -38,6 +39,10 @@ import com.example.accounting.core.domain.ExpenseCategory
 import com.example.accounting.core.domain.PaidWith
 import com.example.accounting.core.domain.TemplateId
 import com.example.accounting.core.ui.money.LocalAmountUnit
+
+/** Test tags for the instrumented QA flow (T13a). They attach no behaviour. */
+const val MANUAL_AMOUNT_FIELD_TAG = "manual_amount_field"
+const val MANUAL_SUBMIT_TAG = "manual_submit"
 
 private val TEMPLATE_CHOICES = listOf(
     TemplateId.PURCHASE_CASH,
@@ -111,7 +116,7 @@ fun ManualEntryForm(
         OutlinedTextField(
             value = amountText,
             onValueChange = { amountText = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(MANUAL_AMOUNT_FIELD_TAG),
             label = {
                 Text(
                     stringResource(
@@ -180,7 +185,8 @@ fun ManualEntryForm(
             enabled = canSubmit,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 48.dp),
+                .heightIn(min = 48.dp)
+                .testTag(MANUAL_SUBMIT_TAG),
         ) {
             Text(stringResource(R.string.manual_submit))
         }

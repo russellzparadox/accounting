@@ -19,6 +19,7 @@ android {
         targetSdk = 36
         versionCode = ciBuildNumber ?: 1
         versionName = if (ciBuildNumber != null) "0.1.$ciBuildNumber" else "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -58,4 +59,15 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    // Instrumented QA (T13a, app/src/androidTest). Not part of the unit-test or release build.
+    // Room and coroutines are implementation deps of core:data / core:domain, so the test source set needs them directly.
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.uiautomator)
+    androidTestImplementation(libs.androidx.room.runtime)
+    androidTestImplementation(libs.kotlinx.coroutines.core)
 }
