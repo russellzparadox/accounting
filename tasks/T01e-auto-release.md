@@ -1,5 +1,5 @@
 # T01e — Auto-publish APK to GitHub Releases on every green build
-Status: todo (queued; run right after T04, before T07)
+Status: in_progress
 Depends: T01d
 Read first: CLAUDE.md, handouts/T01c-github-actions.md, handouts/T01d-ci-green.md, docs/CI.md
 Skills to invoke: none
