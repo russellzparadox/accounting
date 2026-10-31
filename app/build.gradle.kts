@@ -65,6 +65,12 @@ android {
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
+            // Adds the qa-only keep rules (kotlin stdlib for the instrumentation runner). Rules: app/proguard-qa-rules.pro.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "proguard-qa-rules.pro",
+            )
         }
     }
 
