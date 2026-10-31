@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload debug APK
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
@@ -72,7 +72,7 @@ jobs:
       # Retrace key for crash stacks from the minified release (retrace with this mapping.txt).
       - name: Upload R8 mapping (release-mapping)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-mapping
           path: app/build/outputs/mapping/release/
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload build reports on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-reports
           if-no-files-found: warn

@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload QA artifacts (screenshots, PDF pages, PDF, CSV)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-artifacts
           path: qa-artifacts/
@@ -80,7 +80,7 @@ jobs:
 
       - name: Upload androidTest reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: androidtest-reports
           if-no-files-found: warn
