@@ -83,7 +83,7 @@ class ReportExportTest {
                 memo = "خرید بانکی",
                 lines = listOf(
                     JournalLine("5100", Side.DEBIT, Money(2_000_000L)),
-                    JournalLine("1200", Side.CREDIT, Money(2_000_000L)),
+                    JournalLine("1201", Side.CREDIT, Money(2_000_000L)),
                 ),
             ),
         )

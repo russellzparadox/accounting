@@ -103,10 +103,10 @@ jobs:
                       n += 1
                       if n > 10:
                           break
-                      msg = (fl.get('message') or '').splitlines()[:3]
+                      msg = (fl.get('message') or '').splitlines()[:4]
                       print(f"FAILED {tc.get('classname')}.{tc.get('name')}")
                       for line in msg:
-                          print(f"  {line[:300]}")
+                          print(f"  {line[:900]}")
           print(f"total failed testcases: {n}")
           print("androidTest result files: " + str(len(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True))))
           PY

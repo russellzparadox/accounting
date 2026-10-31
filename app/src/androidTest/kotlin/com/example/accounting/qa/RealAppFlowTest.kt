@@ -1,5 +1,8 @@
 package com.example.accounting.qa
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
@@ -54,10 +57,25 @@ class RealAppFlowTest {
     private fun str(id: Int, vararg args: Any): String = context.getString(id, *args)
 
     private fun waitForNode(matcher: SemanticsMatcher, timeoutMs: Long = 15_000L) {
-        composeRule.waitUntil(timeoutMs) {
-            composeRule.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+        try {
+            composeRule.waitUntil(timeoutMs) {
+                composeRule.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (e: ComposeTimeoutException) {
+            // Diagnostics for CI: which step, what was on screen, and a screenshot (qa/fail-timeout.png).
+            runCatching { QaOutput.screenshot(context, "fail-timeout") }
+            throw AssertionError(
+                "QA step timed out waiting for [${matcher.description}]; visible text: ${visibleTexts()}",
+                e,
+            )
         }
     }
+
+    private fun visibleTexts(): String = composeRule.onAllNodes(hasText("", substring = true), useUnmergedTree = true)
+        .fetchSemanticsNodes()
+        .flatMap { node -> node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } }
+        .joinToString(" | ")
+        .take(1500)
 
     private fun clickNode(matcher: SemanticsMatcher) {
         waitForNode(matcher)
