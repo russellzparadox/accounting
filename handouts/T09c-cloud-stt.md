@@ -4,7 +4,7 @@ Status: partial (code done and CI green; real mic + real provider unverified; se
 ## Summary
 - Backend: `POST /v1/audio/transcriptions` (OpenAI-compatible multipart), STT upstream client, `STT_*` env, tests incl. official `openai` SDK. No new dependency.
 - Android: `CloudSpeechSource` (MediaRecorder, 30 s cap, upload), `RoutingSpeechSource` (AUTO / DEVICE_ONLY / CLOUD_ONLY, one AUTO fallback), Settings «ورودی صدا», one-time consent dialog, engine label, privacy copy, tests.
-- CI: backend run 41214340198 (8aa5413) success. Android run 41215292301 (ba0637c) success (lint, test, assembleDebug, publish). Final run ids: see "Final runs" below.
+- CI: see "Final runs" below.
 
 ## Files (new or changed)
 - Backend: `backend/src/stt.ts` (fields, multipart via `Request.formData()`, `OpenAiSttClient`), `backend/src/server.ts` (route, 501, errors, logs), `backend/src/config.ts` (`STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL`, `STT_TIMEOUT_MS`), `backend/src/index.ts` (client wiring), `backend/test/stt.test.ts`, `backend/test/stt_sdk.test.ts`, `backend/test/config.test.ts`, `backend/.env.example`, `docs/BACKEND.md`.
@@ -22,6 +22,12 @@ Status: partial (code done and CI green; real mic + real provider unverified; se
 - Android: `interface SpeechSource` unchanged. `CloudSpeechSource(scope, cacheDir, config, recorder, transcriber, hasPermission)`. `RoutingSpeechSource(local, cloud, prefs, scope)`. `VoicePreferences { engine, cloudConfigured, cloudConsented, acceptCloudConsent() }`. `VoiceEngine { AUTO, DEVICE_ONLY, CLOUD_ONLY }`.
 - `VoiceViewModel(speech, diagnostics, languagePack, prefs)`. Actions `ConfirmCloudConsent`, `DismissCloudConsent`. State `consentRequired`, `processing`, `engine`.
 - Settings keys: `voice_engine` (default AUTO), `cloud_stt_consent`.
+
+## Final runs (branch claude/dreamy-mccarthy-mczm8c)
+- Backend: 41214340198 on 8aa5413, success.
+- Android (code): 41215292301 on ba0637c, success (build: lint, test, assembleDebug; publish success).
+- Android (docs/status, this handout): 41215875462 on 435b087, success.
+- Pushes used on this task: 8aa5413, ba0637c, 435b087, plus the handout-fix push below (max 6 for the Android part).
 
 ## Audit (items 1-8 of tasks/T09c-cloud-stt.md)
 Legend: MET / PARTIAL / NOT MET. Evidence = file:line.
