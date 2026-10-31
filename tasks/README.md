@@ -1,0 +1,27 @@
+# Tasks index
+Run sequentially, one subagent at a time. Handouts are the only inter-task channel.
+
+| ID | Name | Depends | Status |
+|----|------|---------|--------|
+| T00 | bootstrap | none | done |
+| T01 | android-scaffold | T00 | todo |
+| T01c | github-actions | T01 | todo |
+| T01b | design-system | T00 | todo |
+| T02 | accounting-rules | T00 | todo |
+| T03 | domain-core | T02, T01 | todo |
+| T04 | room-persistence | T03 | todo |
+| T05 | persian-utils | T01 | todo |
+| T06 | backend-llm-proxy | T02 | todo |
+| T07 | nl-pipeline | T03, T05, T06 | todo |
+| T08 | entry-ui | T01b, T04, T07 | todo |
+| T09 | voice-input | T08 | todo |
+| T10 | ledger-ui | T04, T08 | todo |
+| T11 | reports | T10 | todo |
+| T12 | settings-onboarding | T08 | todo |
+| T13 | qa | T07, T08, T09, T10, T11, T12 | todo |
+| T14 | release-prep | T13 | todo |
+
+## Run order
+T00 -> T01 -> T01c -> T01b -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08 -> T09 -> T10 -> T11 -> T12 -> T13 -> T14
+
+Files: `tasks/Txx-slug.md` (from `tasks/_TEMPLATE.md`), `handouts/Txx-slug.md` (from `handouts/_TEMPLATE.md`).
