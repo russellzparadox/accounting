@@ -1,6 +1,7 @@
 package com.example.accounting.feature.reports.export
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
@@ -14,18 +15,19 @@ import com.example.accounting.core.domain.report.ReportFormat
 import com.example.accounting.core.domain.report.ReportTable
 import com.example.accounting.core.persian.PersianDigits
 import com.example.accounting.feature.reports.R
+import com.example.accounting.feature.reports.export.PdfLayout.MARGIN
+import com.example.accounting.feature.reports.export.PdfLayout.PAGE_H
+import com.example.accounting.feature.reports.export.PdfLayout.PAGE_W
 import java.io.OutputStream
 import com.example.accounting.core.ui.R as UiR
 
 /**
- * A4 portrait PDF with android.graphics.pdf.PdfDocument.
- * RTL: column 0 sits at the right margin; each cell is a StaticLayout with an RTL direction (right-aligned).
- * Vazirmatn (core:ui) for all text. The table header repeats on every page; each page gets a page-number footer.
+ * A4 portrait PDF with android.graphics.pdf.PdfDocument. Geometry and page breaks come from [PdfLayout] (pure,
+ * unit-tested). RTL: column 0 at the right margin; each cell is a StaticLayout with RTL direction (right-aligned).
+ * Vazirmatn (core:ui) for all text. Header repeats on every page; each page gets a page-number footer.
+ * Rendering itself is NOT exercised by any CI test (Robolectric cannot back PdfDocument here); see the handout.
  */
 object PdfExporter {
-    private const val PAGE_W = 595
-    private const val PAGE_H = 842
-    private const val MARGIN = 36f
     private const val PAD = 4f
     private const val BODY_SP = 9f
     private const val TITLE_SP = 15f
@@ -55,58 +57,64 @@ object PdfExporter {
         }
         val rule = Paint().apply { strokeWidth = 0.75f }
 
-        val widths = columnWidths(table)
-        fun colLeft(i: Int): Float = PAGE_W - MARGIN - widths.take(i + 1).sum()
+        // Measure first: widths, cell layouts, row heights. Then break pages with PdfLayout.
+        val widths = PdfLayout.columnWidths(columnWeights(table), PAGE_W - 2 * MARGIN)
+        fun layoutsFor(cells: List<String>, paint: TextPaint): List<StaticLayout> =
+            cells.mapIndexed { i, text ->
+                val t = text.ifEmpty { " " }
+                StaticLayout.Builder.obtain(t, 0, t.length, paint, (widths[i] - 2 * PAD).toInt().coerceAtLeast(1))
+                    .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+                    .setTextDirection(TextDirectionHeuristics.RTL)
+                    .setIncludePad(false)
+                    .build()
+            }
+        fun heightOf(layouts: List<StaticLayout>): Float = (layouts.maxOfOrNull { it.height } ?: 0) + 2 * PAD
+
+        val headerTexts = table.columns.map { it.title }
+        val headerLayouts = layoutsFor(headerTexts, bodyBold)
+        val headerH = heightOf(headerLayouts)
+        val bodyRows = mutableListOf<Pair<List<String>, TextPaint>>()
+        table.rows.forEach { row -> bodyRows += row.map { ReportFormat.display(it, table.unit) } to body }
+        table.totals?.let { totals -> bodyRows += totals.map { ReportFormat.display(it, table.unit) } to bodyBold }
+        val rowLayouts = bodyRows.map { (cells, paint) -> layoutsFor(cells, paint) }
+        val rowHeights = rowLayouts.map { heightOf(it) }
+
+        val warningH = if (table.balanced) 0f else BODY_SP + 8f
+        val titleBlock = TITLE_SP + 6f + BODY_SP + 8f + warningH
+        val starts = PdfLayout.pageStarts(rowHeights, MARGIN + titleBlock + headerH, headerH)
 
         val pdf = PdfDocument()
-        var pageNo = 0
-        var page: PdfDocument.Page? = null
-        var y = 0f
-
-        fun startPage() {
-            pageNo++
-            page = pdf.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNo).create())
-            y = MARGIN
-        }
-
-        fun endPage() {
-            val p = page ?: return
+        starts.forEachIndexed { p, from ->
+            val to = starts.getOrNull(p + 1) ?: rowLayouts.size
+            val pageNo = p + 1
+            val page = pdf.startPage(PdfDocument.PageInfo.Builder(PAGE_W.toInt(), PAGE_H.toInt(), pageNo).create())
+            val canvas = page.canvas
+            var y = MARGIN
+            if (p == 0) {
+                y = drawTitleBlock(canvas, context, table, titlePaint, subtitlePaint, y)
+            }
+            y = drawRow(canvas, widths, headerLayouts, y, headerH, rule)
+            for (r in from until to) {
+                y = drawRow(canvas, widths, rowLayouts[r], y, rowHeights[r], rule)
+            }
             val label = context.getString(R.string.report_page, PersianDigits.toPersian(pageNo.toString()))
-            p.canvas.drawText(label, PAGE_W / 2f, PAGE_H - MARGIN / 2, footerPaint)
-            pdf.finishPage(p)
-            page = null
+            canvas.drawText(label, PAGE_W / 2f, PAGE_H - MARGIN / 2, footerPaint)
+            pdf.finishPage(page)
         }
+        pdf.writeTo(out)
+        pdf.close()
+        return starts.size
+    }
 
-        fun layoutOf(text: String, width: Float, paint: TextPaint): StaticLayout =
-            StaticLayout.Builder.obtain(text, 0, text.length, paint, width.toInt().coerceAtLeast(1))
-                .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-                .setTextDirection(TextDirectionHeuristics.RTL)
-                .setIncludePad(false)
-                .build()
-
-        fun drawRow(cells: List<String>, paint: TextPaint, repeatHeader: List<String>?) {
-            val layouts = cells.mapIndexed { i, text ->
-                layoutOf(text.ifEmpty { " " }, widths[i] - 2 * PAD, paint)
-            }
-            val h = (layouts.maxOfOrNull { it.height } ?: 0) + 2 * PAD
-            if (y + h > PAGE_H - MARGIN) {
-                endPage()
-                startPage()
-                if (repeatHeader != null) drawRow(repeatHeader, bodyBold, null)
-            }
-            val canvas = checkNotNull(page).canvas
-            layouts.forEachIndexed { i, layout ->
-                canvas.save()
-                canvas.translate(colLeft(i) + PAD, y + PAD)
-                layout.draw(canvas)
-                canvas.restore()
-            }
-            canvas.drawLine(MARGIN, y + h, PAGE_W - MARGIN, y + h, rule)
-            y += h
-        }
-
-        startPage()
-        val canvas = checkNotNull(page).canvas
+    private fun drawTitleBlock(
+        canvas: Canvas,
+        context: Context,
+        table: ReportTable,
+        titlePaint: Paint,
+        subtitlePaint: Paint,
+        top: Float,
+    ): Float {
+        var y = top
         canvas.drawText(table.title, PAGE_W - MARGIN, y + TITLE_SP, titlePaint)
         y += TITLE_SP + 6f
         canvas.drawText(table.subtitle, PAGE_W - MARGIN, y + BODY_SP, subtitlePaint)
@@ -115,26 +123,32 @@ object PdfExporter {
             canvas.drawText(context.getString(R.string.report_unbalanced), PAGE_W - MARGIN, y + BODY_SP, subtitlePaint)
             y += BODY_SP + 8f
         }
-        val header = table.columns.map { it.title }
-        drawRow(header, bodyBold, null)
-        table.rows.forEach { row -> drawRow(row.map { ReportFormat.display(it, table.unit) }, body, header) }
-        table.totals?.let { totals -> drawRow(totals.map { ReportFormat.display(it, table.unit) }, bodyBold, header) }
-        endPage()
-
-        pdf.writeTo(out)
-        pdf.close()
-        return pageNo
+        return y
     }
 
-    /** Column widths in points, summing to the usable page width. Index 0 is the rightmost column (RTL). */
-    private fun columnWidths(table: ReportTable): List<Float> {
-        val usable = PAGE_W - 2 * MARGIN
-        val weights = table.columns.indices.map { i ->
-            val lengths = table.rows.map { ReportFormat.display(it[i], table.unit).length }
-            val avg = if (lengths.isEmpty()) 0.0 else lengths.average()
-            (avg / 6.0).coerceIn(1.0, 3.0).toFloat()
+    /** Draws one row at [top]; returns the y below it. */
+    private fun drawRow(
+        canvas: Canvas,
+        widths: List<Float>,
+        layouts: List<StaticLayout>,
+        top: Float,
+        height: Float,
+        rule: Paint,
+    ): Float {
+        layouts.forEachIndexed { i, layout ->
+            canvas.save()
+            canvas.translate(PdfLayout.columnLeft(widths, i) + PAD, top + PAD)
+            layout.draw(canvas)
+            canvas.restore()
         }
-        val total = weights.sum()
-        return weights.map { usable * it / total }
+        canvas.drawLine(MARGIN, top + height, PAGE_W - MARGIN, top + height, rule)
+        return top + height
+    }
+
+    /** Relative width per column: longer text gets more room, numbers stay compact. */
+    private fun columnWeights(table: ReportTable): List<Float> = table.columns.indices.map { i ->
+        val lengths = table.rows.map { ReportFormat.display(it[i], table.unit).length }
+        val avg = if (lengths.isEmpty()) 0.0 else lengths.average()
+        (avg / 6.0).coerceIn(1.0, 3.0).toFloat()
     }
 }
