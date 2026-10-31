@@ -55,7 +55,19 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+
+        // Minified (same R8 rules as release) but debuggable and debug-signed, so the emulator job can install it,
+        // run the androidTest suite against it, and read files/qa via run-as (T13a). Not for distribution.
+        create("qa") {
+            initWith(getByName("release"))
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
+
+    // Instrumented tests (docs/CI.md, instrumented.yml) run against the minified qa variant, not debug.
+    testBuildType = "qa"
 
     buildFeatures {
         compose = true
@@ -94,6 +106,8 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // The test manifest must also be merged into the qa (minified, debuggable) variant that runs androidTest.
+    add("qaImplementation", libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.uiautomator)
