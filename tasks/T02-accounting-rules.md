@@ -1,5 +1,5 @@
 # T02 — accounting-rules
-Status: in_progress
+Status: done
 Depends: T00
 Read first: CLAUDE.md, handouts/T00-bootstrap.md
 Skills to invoke: persian-writing:persian-writing
