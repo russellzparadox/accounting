@@ -113,7 +113,11 @@ class BackupRestoreTest {
     @Test
     fun sqliteFileWithoutLedgerTablesIsRejected() = runBlocking {
         ledger.commit(sale(1_000))
-        val bytes = candidate { it.execSQL("CREATE TABLE notes (x INTEGER)") }
+        // Version matches, so the table check is what rejects it.
+        val bytes = candidate {
+            it.execSQL("CREATE TABLE notes (x INTEGER)")
+            it.version = AppDatabase.SCHEMA_VERSION
+        }
         assertEquals(BackupResult.Rejected(BackupReject.MISSING_TABLES), manager.restore { ByteArrayInputStream(bytes) })
         assertEquals(1, entryCount())
     }

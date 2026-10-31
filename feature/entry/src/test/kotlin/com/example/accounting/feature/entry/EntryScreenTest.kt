@@ -268,7 +268,7 @@ class EntryScreenTest {
 
     @Test
     fun sendThenConfirmThroughViewModelCommits() {
-        ConfigStore(context).save(BackendConfig("https://backend.test", "test-token"))
+        ConfigStore(context, FakeTokenCipher).save(BackendConfig("https://backend.test", "test-token"))
         val db = AppDatabase.inMemory(context)
         try {
             val chart = ChartOfAccounts.standard()
