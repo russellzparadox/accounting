@@ -20,7 +20,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T08 | entry-ui | T01b, T08a | done (CI green run 41191124546; build #86 released) |
 | T09 | voice-input | T08 | done (CI green run 41192294108; build #88+; manual device test pending by user) |
 | T09b | voice-fallback-fix | T09, T12b | done (CI green run 41213284854 on 08fceec; audit 6/6 MET; manual device test pending by user) |
-| T09c | cloud-stt | T09b, T06b, T12b | partial (backend run 41214340198 green on 8aa5413; android run 41215292301 green on ba0637c; device + real STT provider checks pending) |
+| T09c | cloud-stt | T09b, T06b, T12b | done (android run 153 + backend run 12 green; build #153; real mic/provider unverified) |
 | T10 | ledger-ui | T04, T08 | done (fix rounds 1+2; final CI run 41194728898 success on 0f959e9; audit 20 MET, 3 PARTIAL, 0 NOT MET; see handouts/T10-ledger-ui.md) |
 | T10b | manual-journal-editor | T08, T10 | done (CI green run 102, build #102; D1+D3 carried to T12) |
 | T11 | reports | T10 | done (CI green run 109, build #109; PDF render unverified -> T13; unit setting -> T12) |
@@ -28,7 +28,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T12b | settings-follow-through | T12 | done (CI green run 41203285636, build #118; audit items 1-5 MET, 2 code-only sub-points) |
 | T13a | emulator-qa | T12b | done (instrumented run 41208267404 green, 13 QA files pulled; PDF Persian shaping needs human look) |
 | T13 | qa | T12b, T13a | done (CI green run 41210267830 on de7c888; live LLM eval not run, no key; see handouts/T13-qa.md) |
-| T14 | release-prep | T13 | todo |
+| T14 | release-prep | T13, T09c | in_progress |
 
 ## Run order
 T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T12b -> T13a -> T13 -> T09b -> T09c -> T14
