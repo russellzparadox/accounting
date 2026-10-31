@@ -1,0 +1,54 @@
+name: backend
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip if backend/package.json is missing
+        if: hashFiles('backend/package.json') == ''
+        working-directory: .
+        run: echo "backend/package.json not found, nothing to do."
+
+      - name: Set up Node 20
+        if: hashFiles('backend/package.json') != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        if: hashFiles('backend/package.json') != ''
+        run: npm ci
+
+      - name: Test
+        if: hashFiles('backend/package.json') != ''
+        run: npm test
+
+      - name: Build
+        if: hashFiles('backend/package.json') != ''
+        run: npm run build

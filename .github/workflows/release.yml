@@ -1,0 +1,91 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Assemble release
+        run: ./gradlew --stacktrace assembleRelease
+
+      - name: Collect release APK (unsigned copy)
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          apk=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          cp "$apk" dist/app-release-unsigned.apk
+
+      - name: Detect signing secrets
+        id: sig
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets present: APK will be signed."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets not set: uploading unsigned APK."
+          fi
+
+      # Signs the APK after assembly (app/build.gradle.kts has no signingConfig),
+      # using apksigner/zipalign from the runner's Android SDK build-tools.
+      - name: Sign APK
+        if: steps.sig.outputs.signed == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          ks="$RUNNER_TEMP/release.keystore"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$ks"
+          "$bt/zipalign" -p -f 4 dist/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$bt/apksigner" sign \
+            --ks "$ks" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:KEYSTORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out dist/app-release.apk \
+            "$RUNNER_TEMP/aligned.apk"
+          rm -f "$ks" dist/app-release-unsigned.apk
+
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.apk --title "$GITHUB_REF_NAME" --generate-notes

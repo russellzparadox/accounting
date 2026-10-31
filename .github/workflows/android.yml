@@ -1,0 +1,67 @@
+name: android
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Diagnostics (versions in use)
+        run: |
+          echo "== runner =="
+          uname -a
+          echo "== version catalog =="
+          cat gradle/libs.versions.toml
+          echo "== wrapper =="
+          cat gradle/wrapper/gradle-wrapper.properties
+          echo "== modules =="
+          cat settings.gradle.kts
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Lint, test, assemble debug
+        run: ./gradlew --stacktrace lint test assembleDebug
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload build reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+            **/build/outputs/lint-results*
+            **/build/outputs/logs/**
