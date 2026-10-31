@@ -1,5 +1,5 @@
 # T01d — Make Android CI green
-Status: in_progress
+Status: done
 Depends: T01, T01c, T03
 Read first: CLAUDE.md, handouts/T01-android-scaffold.md, handouts/T01c-github-actions.md, handouts/T03-domain-core.md
 Skills to invoke: none
