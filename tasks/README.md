@@ -6,7 +6,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T00 | bootstrap | none | done |
 | T01 | android-scaffold | T00 | partial (build unverified, needs CI) |
 | T01c | github-actions | T01 | done (first CI run pending) |
-| T01b | design-system | T00 | todo |
+| T01b | design-system | T00 | done |
 | T02 | accounting-rules | T00 | todo |
 | T03 | domain-core | T02, T01 | todo |
 | T04 | room-persistence | T03 | todo |

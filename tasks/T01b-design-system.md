@@ -1,5 +1,5 @@
 # T01b — design-system
-Status: todo
+Status: done
 Depends: T00
 Read first: CLAUDE.md, handouts/T00-bootstrap.md
 Skills to invoke: impeccable, ui-ux-pro-max (only if installed; else design:design-system, design:ux-copy, design:accessibility-review, persian-writing:persian-writing)
