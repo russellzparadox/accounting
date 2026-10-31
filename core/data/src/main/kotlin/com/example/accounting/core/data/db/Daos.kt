@@ -28,7 +28,7 @@ interface AccountDao {
     @Query("SELECT MAX(code) FROM account WHERE code BETWEEN :from AND :to")
     suspend fun maxCodeInRange(from: String, to: String): String?
 
-    /** 1 when [code] is a existing non-group account with no معین children, else 0. */
+    /** 1 when [code] is an existing non-group account with no معین children, else 0. */
     @Query(
         """SELECT COUNT(*) FROM account a
            WHERE a.code = :code AND a.level <> 'GROUP'
