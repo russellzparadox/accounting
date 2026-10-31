@@ -2,8 +2,24 @@ package com.example.accounting.core.data.speech
 
 import kotlinx.coroutines.flow.Flow
 
-/** Failure classes of a speech session. The UI maps each one to Persian text. */
-enum class SpeechErrorKind { NO_MATCH, UNAVAILABLE, BUSY, NO_PERMISSION, NETWORK, UNSUPPORTED, OTHER }
+/**
+ * Failure classes of a speech session. The UI maps each one to Persian text.
+ * NO_RECOGNIZER_INSTALLED: no RecognitionService on the phone at all.
+ * LANGUAGE_PACK_MISSING: the recognizer refused fa-IR (offline pack not installed).
+ */
+enum class SpeechErrorKind {
+    NO_MATCH,
+    NO_RECOGNIZER_INSTALLED,
+    LANGUAGE_PACK_MISSING,
+    BUSY,
+    NO_PERMISSION,
+    NETWORK,
+    UNSUPPORTED,
+    OTHER,
+}
+
+/** Which recognizer the current attempt uses. ON_DEVICE = API 31+ on-device model; SYSTEM = default service. */
+enum class SpeechEngine { ON_DEVICE, SYSTEM }
 
 /** Events of one session. Callers never submit on their own: a [Final] only fills the input. */
 sealed interface SpeechEvent {
@@ -13,15 +29,22 @@ sealed interface SpeechEvent {
     /** Final text of the session (first alternative). */
     data class Final(val text: String) : SpeechEvent
 
-    data class Error(val kind: SpeechErrorKind) : SpeechEvent
+    /** Session ended with an error. [code] is the platform SpeechRecognizer code, null when not from the recognizer. */
+    data class Error(val kind: SpeechErrorKind, val code: Int? = null) : SpeechEvent
+
+    /**
+     * A new attempt starts on [engine]. [afterErrorCode] is set when this is the fallback after the
+     * on-device attempt failed with that code. For diagnostics only.
+     */
+    data class EngineChanged(val engine: SpeechEngine, val afterErrorCode: Int? = null) : SpeechEvent
 }
 
-/** Immediate result of [SpeechSource.start], before any event arrives. */
+/** Immediate result of [SpeechSource.start], before any event arrives. UNAVAILABLE = no recognition service. */
 enum class SpeechStartResult { STARTED, BUSY, UNAVAILABLE, NO_PERMISSION, UNSUPPORTED }
 
 /**
- * Speech-to-text behind an interface. v1 impl is on-device ([AndroidSpeechSource]); cloud is a stub.
- * [start], [stop] and [release] are called on the main thread. Only one session at a time.
+ * Speech-to-text behind an interface. v1 impl is on-device with a single system fallback ([AndroidSpeechSource]);
+ * cloud is a stub. [start], [stop] and [release] are called on the main thread. Only one session at a time.
  */
 interface SpeechSource {
     /** Events of the session in progress. Never completes. Collect before calling [start]. */
