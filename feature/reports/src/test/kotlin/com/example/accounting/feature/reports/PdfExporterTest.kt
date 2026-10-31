@@ -14,13 +14,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * PDF export layout on Robolectric. Text extraction and visual checks are NOT done here (see the handout):
  * this proves pagination and that bytes are produced. Persian glyph shaping needs a device check.
  */
+// LEGACY graphics stubs PdfDocument as closed (startPage throws "document is closed!"); NATIVE backs it.
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class PdfExporterTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
