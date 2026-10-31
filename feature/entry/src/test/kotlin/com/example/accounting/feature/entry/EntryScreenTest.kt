@@ -54,9 +54,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Compose UI tests on Robolectric (JVM). Stateless checks first, then one run through the real ViewModel. */
+/**
+ * Compose UI tests on Robolectric (JVM). Stateless checks first, then one run through the real ViewModel.
+ * Window is phone-sized (411x1200dp): the default Robolectric 320x470dp window is shorter than a
+ * confirmation card, so its Dr/Cr totals and Confirm button would be off-screen (not displayed, not clickable).
+ */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], qualifiers = "w411dp-h1200dp")
 class EntryScreenTest {
     @get:Rule
     val compose = createComposeRule()
