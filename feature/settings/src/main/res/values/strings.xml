@@ -61,6 +61,42 @@
     <string name="about_app">حسابداری</string>
     <string name="about_version">نسخه %1$s</string>
 
+    <!-- Speech diagnostics card (T09b). Plain-text copy for bug reports; no personal data. -->
+    <string name="speech_title">تشخیص گفتار</string>
+    <string name="speech_help">اگر ضبط صدا کار نمی‌کند، این اطلاعات را همراه شرح مشکل بفرستید. هیچ داده‌ی شخصی در آن نیست.</string>
+    <string name="speech_checking">در حال بررسی…</string>
+    <string name="speech_report_title">گزارش تشخیص گفتار</string>
+    <string name="speech_api_level">نسخه‌ی اندروید: %1$s</string>
+    <string name="speech_service_yes">سرویس تشخیص گفتار: موجود</string>
+    <string name="speech_service_no">سرویس تشخیص گفتار: پیدا نشد</string>
+    <string name="speech_on_device_yes">تشخیص روی گوشی: موجود</string>
+    <string name="speech_on_device_no">تشخیص روی گوشی: موجود نیست</string>
+    <string name="speech_services">سرویس‌های نصب‌شده: %1$s</string>
+    <string name="speech_services_none">هیچ‌کدام</string>
+    <string name="speech_fa_pack">بسته‌ی فارسی: %1$s</string>
+    <string name="speech_fa_installed">نصب شده</string>
+    <string name="speech_fa_not_installed">نصب نشده</string>
+    <string name="speech_fa_pending">در صف نصب</string>
+    <string name="speech_fa_unsupported_api">این نسخه‌ی اندروید بررسی نمی‌کند</string>
+    <string name="speech_fa_unknown">بررسی نشد</string>
+    <string name="speech_last_error">آخرین خطای صدا: %1$s</string>
+    <string name="speech_last_error_none">آخرین خطای صدا: ثبت نشده است</string>
+    <string name="speech_error_code">%1$s (کد %2$s)</string>
+    <string name="speech_engine">موتور: %1$s</string>
+    <string name="speech_engine_on_device">روی گوشی</string>
+    <string name="speech_engine_system">سرویس سیستم</string>
+    <string name="speech_err_no_match">صدا واضح نبود</string>
+    <string name="speech_err_no_recognizer">سرویس تشخیص نصب نبود</string>
+    <string name="speech_err_language_pack">بسته‌ی فارسی نصب نبود</string>
+    <string name="speech_err_busy">سرویس مشغول بود</string>
+    <string name="speech_err_no_permission">دسترسی میکروفون نبود</string>
+    <string name="speech_err_network">خطای شبکه</string>
+    <string name="speech_err_unsupported">پشتیبانی نمی‌شود</string>
+    <string name="speech_err_other">خطای دیگر</string>
+    <string name="speech_copy_action">کپی گزارش</string>
+    <string name="speech_refresh_action">بررسی دوباره</string>
+    <string name="speech_copied">گزارش کپی شد.</string>
+
     <string name="section_privacy">حریم خصوصی</string>
     <string name="privacy_show">متن حریم خصوصی</string>
     <string name="privacy_close">بستن</string>

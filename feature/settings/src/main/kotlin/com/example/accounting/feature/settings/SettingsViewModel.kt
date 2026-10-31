@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
 import com.example.accounting.core.data.config.SettingsRepository
+import com.example.accounting.core.data.speech.SpeechProbe
+import com.example.accounting.core.data.speech.SpeechReport
 import com.example.accounting.core.domain.backup.BackupReject
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
@@ -43,6 +45,8 @@ data class SettingsUi(
     val backupBusy: Boolean = false,
     /** True after a successful restore: the screen asks the user to restart. */
     val restored: Boolean = false,
+    /** Speech diagnostics. Null while the fa-IR check runs. */
+    val speech: SpeechReport? = null,
 )
 
 /** Every user action on the settings screen. Stream and file access come in as lambdas from the route. */
@@ -54,6 +58,7 @@ sealed interface SettingsAction {
     data object TestConnection : SettingsAction
     data class Export(val openOutput: () -> OutputStream?) : SettingsAction
     data class Restore(val openInput: () -> InputStream?) : SettingsAction
+    data object RefreshSpeech : SettingsAction
 }
 
 @HiltViewModel
@@ -63,6 +68,7 @@ class SettingsViewModel @Inject constructor(
     private val configStore: ConfigStore,
     private val backup: BackupManager,
     private val clock: Clock,
+    private val speechProbe: SpeechProbe,
 ) : ViewModel() {
 
     private var config: BackendConfig = BackendConfig.NOT_CONFIGURED
@@ -70,6 +76,7 @@ class SettingsViewModel @Inject constructor(
     val ui: StateFlow<SettingsUi> = _ui.asStateFlow()
 
     init {
+        refreshSpeech()
         viewModelScope.launch {
             combine(settings.settings, configStore.config) { s, c -> s to c }.collect { (s, c) ->
                 config = c
@@ -98,7 +105,13 @@ class SettingsViewModel @Inject constructor(
             SettingsAction.TestConnection -> testConnection()
             is SettingsAction.Export -> export(action.openOutput)
             is SettingsAction.Restore -> restore(action.openInput)
+            SettingsAction.RefreshSpeech -> refreshSpeech()
         }
+    }
+
+    private fun refreshSpeech() {
+        _ui.value = _ui.value.copy(speech = null)
+        speechProbe.snapshot { report -> _ui.value = _ui.value.copy(speech = report) }
     }
 
     /** An empty token field keeps the saved token: the user can change only the address. */

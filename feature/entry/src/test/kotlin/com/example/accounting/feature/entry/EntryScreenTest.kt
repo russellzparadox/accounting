@@ -130,6 +130,41 @@ class EntryScreenTest {
     }
 
     @Test
+    fun voiceErrorShowsItsPlatformCodeAsATail() {
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(error = SpeechErrorKind.LANGUAGE_PACK_MISSING, errorCode = 13),
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.voice_error_code, "۱۳"), substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun languagePackOfferShowsDownloadButtonAndTapDispatchesDownload() {
+        val voiceActions = mutableListOf<VoiceAction>()
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = {},
+                    voice = VoiceUiState(
+                        error = SpeechErrorKind.LANGUAGE_PACK_MISSING,
+                        errorCode = 13,
+                        pack = PackUi.Offer,
+                    ),
+                    onVoiceAction = { voiceActions += it },
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.voice_pack_download_action)).assertIsDisplayed().performClick()
+        assertTrue(voiceActions == listOf<VoiceAction>(VoiceAction.DownloadLanguagePack))
+    }
+
+    @Test
     fun micWithoutPermissionOpensRationaleAndDoesNotStartListening() {
         val voiceActions = mutableListOf<VoiceAction>()
         compose.setContent {

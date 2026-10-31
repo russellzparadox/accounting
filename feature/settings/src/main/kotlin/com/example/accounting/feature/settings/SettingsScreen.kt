@@ -170,6 +170,7 @@ fun SettingsScreen(
             BodyText(stringResource(R.string.about_app))
             BodyText(stringResource(R.string.about_version, versionName))
         }
+        SpeechReportCard(report = state.speech, onRefresh = { onAction(SettingsAction.RefreshSpeech) })
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle(stringResource(R.string.section_privacy))
             OutlinedButton(onClick = { showPrivacy = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

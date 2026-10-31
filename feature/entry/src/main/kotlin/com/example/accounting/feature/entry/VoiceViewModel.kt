@@ -2,8 +2,12 @@ package com.example.accounting.feature.entry
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.accounting.core.data.speech.PackEvent
+import com.example.accounting.core.data.speech.PackStatus
+import com.example.accounting.core.data.speech.SpeechDiagnostics
 import com.example.accounting.core.data.speech.SpeechErrorKind
 import com.example.accounting.core.data.speech.SpeechEvent
+import com.example.accounting.core.data.speech.SpeechLanguagePack
 import com.example.accounting.core.data.speech.SpeechSource
 import com.example.accounting.core.data.speech.SpeechStartResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +25,9 @@ sealed interface VoiceAction {
 
     /** Asks the recognizer to finish. Listening ends when its final result or error arrives. */
     data object Stop : VoiceAction
+
+    /** Starts the fa-IR language-pack download (API 33+). */
+    data object DownloadLanguagePack : VoiceAction
 }
 
 /**
@@ -29,10 +36,33 @@ sealed interface VoiceAction {
  */
 data class VoiceTranscript(val text: String, val seq: Int)
 
+/** Language-pack line under the voice error. Only shown for the pack error and while a download runs. */
+sealed interface PackUi {
+    data object None : PackUi
+
+    /** fa-IR not installed: the download button is offered. */
+    data object Offer : PackUi
+
+    /** The system has the download queued or is installing it. */
+    data object Pending : PackUi
+
+    data class Downloading(val percent: Int?) : PackUi
+
+    /** API 33: download triggered, no progress available. */
+    data object Started : PackUi
+
+    data object Done : PackUi
+
+    data class Failed(val code: Int) : PackUi
+}
+
 data class VoiceUiState(
     val listening: Boolean = false,
     val error: SpeechErrorKind? = null,
+    /** Platform code of [error] for the small muted «(کد …)» tail. Null when the error has no code. */
+    val errorCode: Int? = null,
     val transcript: VoiceTranscript? = null,
+    val pack: PackUi = PackUi.None,
 )
 
 /**
@@ -42,6 +72,8 @@ data class VoiceUiState(
 @HiltViewModel
 class VoiceViewModel @Inject constructor(
     private val speech: SpeechSource,
+    private val diagnostics: SpeechDiagnostics,
+    private val languagePack: SpeechLanguagePack,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(VoiceUiState())
@@ -59,6 +91,7 @@ class VoiceViewModel @Inject constructor(
         when (action) {
             is VoiceAction.Start -> start(action.currentText)
             VoiceAction.Stop -> speech.stop()
+            VoiceAction.DownloadLanguagePack -> downloadPack()
         }
     }
 
@@ -68,11 +101,14 @@ class VoiceViewModel @Inject constructor(
         val error = when (speech.start()) {
             SpeechStartResult.STARTED -> null
             SpeechStartResult.BUSY -> SpeechErrorKind.BUSY
-            SpeechStartResult.UNAVAILABLE -> SpeechErrorKind.UNAVAILABLE
+            SpeechStartResult.UNAVAILABLE -> SpeechErrorKind.NO_RECOGNIZER_INSTALLED
             SpeechStartResult.NO_PERMISSION -> SpeechErrorKind.NO_PERMISSION
             SpeechStartResult.UNSUPPORTED -> SpeechErrorKind.UNSUPPORTED
         }
-        mutableState.update { it.copy(listening = error == null, error = error) }
+        if (error != null) diagnostics.recordError(error, null)
+        mutableState.update {
+            it.copy(listening = error == null, error = error, errorCode = null, pack = PackUi.None)
+        }
     }
 
     private fun handle(event: SpeechEvent) {
@@ -80,9 +116,47 @@ class VoiceViewModel @Inject constructor(
             is SpeechEvent.Partial -> showText(event.text)
             is SpeechEvent.Final -> {
                 showText(event.text)
-                mutableState.update { it.copy(listening = false, error = null) }
+                mutableState.update { it.copy(listening = false, error = null, errorCode = null) }
             }
-            is SpeechEvent.Error -> mutableState.update { it.copy(listening = false, error = event.kind) }
+            is SpeechEvent.Error -> failed(event.kind, event.code)
+            is SpeechEvent.EngineChanged -> diagnostics.recordEngine(event.engine)
+        }
+    }
+
+    private fun failed(kind: SpeechErrorKind, code: Int?) {
+        diagnostics.recordError(kind, code)
+        mutableState.update {
+            it.copy(listening = false, error = kind, errorCode = code, pack = PackUi.None)
+        }
+        if (kind == SpeechErrorKind.LANGUAGE_PACK_MISSING) checkPack()
+    }
+
+    /** Decides whether to offer the download. Ignored if the user has started another session meanwhile. */
+    private fun checkPack() {
+        languagePack.check { status ->
+            val pack = when (status) {
+                PackStatus.NOT_INSTALLED -> PackUi.Offer
+                PackStatus.PENDING -> PackUi.Pending
+                PackStatus.INSTALLED, PackStatus.UNSUPPORTED_API, PackStatus.UNKNOWN -> PackUi.None
+            }
+            mutableState.update {
+                if (it.error == SpeechErrorKind.LANGUAGE_PACK_MISSING) it.copy(pack = pack) else it
+            }
+        }
+    }
+
+    private fun downloadPack() {
+        if (mutableState.value.pack is PackUi.Downloading) return
+        mutableState.update { it.copy(pack = PackUi.Downloading(null)) }
+        languagePack.download { event ->
+            val next = when (event) {
+                PackEvent.Started -> PackUi.Started
+                PackEvent.Scheduled -> PackUi.Pending
+                is PackEvent.Progress -> PackUi.Downloading(event.percent)
+                PackEvent.Done -> PackUi.Done
+                is PackEvent.Failed -> PackUi.Failed(event.code)
+            }
+            mutableState.update { it.copy(pack = next) }
         }
     }
 
@@ -94,5 +168,6 @@ class VoiceViewModel @Inject constructor(
 
     override fun onCleared() {
         speech.release()
+        languagePack.release()
     }
 }

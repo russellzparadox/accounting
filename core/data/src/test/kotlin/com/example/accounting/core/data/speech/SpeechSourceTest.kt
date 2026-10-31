@@ -63,8 +63,9 @@ class SpeechSourceTest {
         assertEquals(SpeechErrorKind.NETWORK, map(SpeechRecognizer.ERROR_NETWORK))
         assertEquals(SpeechErrorKind.NETWORK, map(SpeechRecognizer.ERROR_NETWORK_TIMEOUT))
         assertEquals(SpeechErrorKind.NETWORK, map(SpeechRecognizer.ERROR_SERVER))
-        assertEquals(SpeechErrorKind.UNAVAILABLE, map(12)) // ERROR_LANGUAGE_NOT_SUPPORTED
-        assertEquals(SpeechErrorKind.UNAVAILABLE, map(13)) // ERROR_LANGUAGE_UNAVAILABLE
+        assertEquals(SpeechErrorKind.LANGUAGE_PACK_MISSING, map(12)) // ERROR_LANGUAGE_NOT_SUPPORTED
+        assertEquals(SpeechErrorKind.LANGUAGE_PACK_MISSING, map(13)) // ERROR_LANGUAGE_UNAVAILABLE
+        assertEquals(SpeechErrorKind.NETWORK, map(11)) // ERROR_SERVER_DISCONNECTED
         assertEquals(SpeechErrorKind.OTHER, map(SpeechRecognizer.ERROR_AUDIO))
         assertEquals(SpeechErrorKind.OTHER, map(SpeechRecognizer.ERROR_CLIENT))
     }

@@ -41,6 +41,15 @@ fun Context.findActivity(): Activity? {
     return null
 }
 
+/** The system voice input settings screen, if this phone has one that the app is allowed to see (API 30+ package visibility). */
+fun canOpenVoiceSettings(context: Context): Boolean =
+    Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).resolveActivity(context.packageManager) != null
+
+/** Opens the system voice input settings. Call only when [canOpenVoiceSettings] is true. */
+fun openVoiceSettings(context: Context) {
+    context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
+}
+
 /** Opens this app's page in system settings, where the user can switch the microphone permission on. */
 fun openAppSettings(context: Context) {
     context.startActivity(
@@ -51,7 +60,8 @@ fun openAppSettings(context: Context) {
 /** Persian line shown under the input bar for a voice error (DESIGN 5.2: errors are text, not only sound). */
 fun SpeechErrorKind.messageRes(): Int = when (this) {
     SpeechErrorKind.NO_MATCH -> R.string.input_voice_unclear
-    SpeechErrorKind.UNAVAILABLE -> R.string.voice_error_unavailable
+    SpeechErrorKind.NO_RECOGNIZER_INSTALLED -> R.string.voice_error_no_recognizer
+    SpeechErrorKind.LANGUAGE_PACK_MISSING -> R.string.voice_error_language_pack
     SpeechErrorKind.BUSY -> R.string.voice_error_busy
     SpeechErrorKind.NO_PERMISSION -> R.string.voice_error_no_permission
     SpeechErrorKind.NETWORK -> R.string.voice_error_network

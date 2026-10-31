@@ -9,7 +9,12 @@ import com.example.accounting.core.data.nlp.NlParserProvider
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.repo.PartyRepository
 import com.example.accounting.core.data.seed.ChartSeeder
+import com.example.accounting.core.data.speech.AndroidRecognizerFactory
 import com.example.accounting.core.data.speech.AndroidSpeechSource
+import com.example.accounting.core.data.speech.LanguagePackController
+import com.example.accounting.core.data.speech.SpeechLanguagePack
+import com.example.accounting.core.data.speech.SpeechDiagnostics
+import com.example.accounting.core.data.speech.SpeechProbe
 import com.example.accounting.core.data.speech.SpeechSource
 import com.example.accounting.core.domain.ChartOfAccounts
 import com.example.accounting.core.domain.PartyAccountResolver
@@ -70,4 +75,22 @@ object DataModule {
     /** Unscoped on purpose: each VoiceViewModel owns its recognizer and destroys it in onCleared. Swap to CloudSpeechSourceStub or a cloud impl here. */
     @Provides
     fun provideSpeechSource(@ApplicationContext context: Context): SpeechSource = AndroidSpeechSource(context)
+
+    /** Last voice error for the Settings diagnostics card. Process-wide, so it is a singleton. */
+    @Provides
+    @Singleton
+    fun provideSpeechDiagnostics(): SpeechDiagnostics = SpeechDiagnostics()
+
+    @Provides
+    @Singleton
+    fun provideLanguagePack(@ApplicationContext context: Context): SpeechLanguagePack =
+        LanguagePackController(AndroidRecognizerFactory(context))
+
+    @Provides
+    @Singleton
+    fun provideSpeechProbe(
+        @ApplicationContext context: Context,
+        diagnostics: SpeechDiagnostics,
+        pack: SpeechLanguagePack,
+    ): SpeechProbe = SpeechProbe(context, AndroidRecognizerFactory(context), diagnostics, pack)
 }

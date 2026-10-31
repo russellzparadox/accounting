@@ -58,7 +58,17 @@
 
     <!-- Voice errors (VoiceViewModel -> SpeechErrorKind). Shown as text under the input bar. -->
     <string name="input_voice_unclear">صدا واضح نبود. دوباره بگویید.</string>
-    <string name="voice_error_unavailable">تشخیص گفتار روی این دستگاه در دسترس نیست. متن را تایپ کنید.</string>
+    <string name="voice_error_no_recognizer">سرویس تشخیص گفتار روی این گوشی پیدا نشد. برنامه‌ی «Google» را نصب یا فعال کنید. تا آن موقع متن را تایپ کنید.</string>
+    <string name="voice_error_language_pack">بسته‌ی فارسی تشخیص گفتار روی گوشی نصب نیست. دانلود کنید یا متن را تایپ کنید.</string>
+    <string name="voice_error_code">(کد %1$s)</string>
+    <string name="voice_settings_action">تنظیمات ورودی صدا</string>
+    <string name="voice_pack_download_action">دانلود بسته‌ی فارسی</string>
+    <string name="voice_pack_downloading">در حال دانلود بسته‌ی فارسی…</string>
+    <string name="voice_pack_downloading_percent">در حال دانلود بسته‌ی فارسی… %1$s٪</string>
+    <string name="voice_pack_pending">بسته‌ی فارسی در صف نصب است. چند دقیقه بعد دوباره امتحان کنید.</string>
+    <string name="voice_pack_started">دانلود شروع شد. چند دقیقه بعد دوباره امتحان کنید.</string>
+    <string name="voice_pack_done">بسته‌ی فارسی نصب شد. دوباره بگویید.</string>
+    <string name="voice_pack_failed">دانلود بسته‌ی فارسی انجام نشد (کد %1$s). اینترنت را بررسی کنید یا متن را تایپ کنید.</string>
     <string name="voice_error_busy">تشخیص صدا هنوز مشغول است. چند لحظه بعد دوباره بگویید.</string>
     <string name="voice_error_network">اتصال برقرار نشد. اینترنت را بررسی کنید یا متن را تایپ کنید.</string>
     <string name="voice_error_unsupported">ضبط صدا در این نسخه فعال نیست. متن را تایپ کنید.</string>

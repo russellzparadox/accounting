@@ -9,6 +9,10 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <!-- T09b: voice input settings link (resolve check before showing the button). -->
+        <intent>
+            <action android:name="android.settings.VOICE_INPUT_SETTINGS" />
+        </intent>
     </queries>
 
     <application

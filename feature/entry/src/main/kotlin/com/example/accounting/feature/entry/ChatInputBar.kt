@@ -14,10 +14,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +32,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
@@ -38,6 +44,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import com.example.accounting.core.data.speech.SpeechErrorKind
+import com.example.accounting.core.persian.PersianDigits
 
 /**
  * Bottom input bar, RTL order from the start: [mic] [text field] [send]. Status line under the row:
@@ -54,7 +61,12 @@ fun ChatInputBar(
     modifier: Modifier = Modifier,
     listening: Boolean = false,
     voiceError: SpeechErrorKind? = null,
+    voiceErrorCode: Int? = null,
+    voicePack: PackUi = PackUi.None,
     onMicClick: () -> Unit = {},
+    onPackDownload: () -> Unit = {},
+    /** Null hides the «تنظیمات ورودی صدا» button (no settings screen to open on this device). */
+    onOpenVoiceSettings: (() -> Unit)? = null,
 ) {
     val sendDescription = stringResource(R.string.input_send_cd)
     Column(
@@ -101,7 +113,14 @@ fun ChatInputBar(
                 }
             }
         }
-        VoiceStatus(listening = listening, error = voiceError)
+        VoiceStatus(
+            listening = listening,
+            error = voiceError,
+            errorCode = voiceErrorCode,
+            pack = voicePack,
+            onPackDownload = onPackDownload,
+            onOpenVoiceSettings = onOpenVoiceSettings,
+        )
     }
 }
 
@@ -136,31 +155,95 @@ private fun MicButton(listening: Boolean, enabled: Boolean, onClick: () -> Unit)
     }
 }
 
-/** Status line under the input row. Listening is polite; errors are shown as text in the error color. */
+/**
+ * Status block under the input row. Listening is polite text. An error is text in the error color, followed by
+ * a muted «(کد …)» tail for the next bug report. The language-pack line and the settings button attach below it.
+ */
 @Composable
-private fun VoiceStatus(listening: Boolean, error: SpeechErrorKind?) {
-    val text: String
-    val color: Color
-    when {
-        listening -> {
-            text = stringResource(R.string.input_listening)
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        }
-        error != null -> {
-            text = stringResource(error.messageRes())
-            color = MaterialTheme.colorScheme.error
-        }
-        else -> return
+private fun VoiceStatus(
+    listening: Boolean,
+    error: SpeechErrorKind?,
+    errorCode: Int?,
+    pack: PackUi,
+    onPackDownload: () -> Unit,
+    onOpenVoiceSettings: (() -> Unit)?,
+) {
+    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
+    if (listening) {
+        Text(
+            text = stringResource(R.string.input_listening),
+            style = MaterialTheme.typography.bodyMedium,
+            color = mutedColor,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 4.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+        )
+        return
     }
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = color,
+    val kind = error ?: return
+    val message = stringResource(kind.messageRes())
+    val line = if (errorCode == null) {
+        AnnotatedString(message)
+    } else {
+        buildAnnotatedString {
+            append(message)
+            append(" ")
+            withStyle(SpanStyle(color = mutedColor)) {
+                append(stringResource(R.string.voice_error_code, PersianDigits.toPersian(errorCode.toString())))
+            }
+        }
+    }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 4.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
-    )
+    ) {
+        Text(
+            text = line,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+        PackLine(pack = pack, onDownload = onPackDownload)
+        val open = onOpenVoiceSettings
+        val settingsOffer = pack == PackUi.None || pack is PackUi.Failed
+        if (open != null && settingsOffer && kind != SpeechErrorKind.NO_PERMISSION) {
+            OutlinedButton(onClick = open, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.voice_settings_action))
+            }
+        }
+    }
+}
+
+/** Download button and progress for the fa-IR language pack. Nothing for [PackUi.None]. */
+@Composable
+private fun PackLine(pack: PackUi, onDownload: () -> Unit) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    when (pack) {
+        PackUi.None -> Unit
+        PackUi.Offer -> Button(onClick = onDownload, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.voice_pack_download_action))
+        }
+        PackUi.Pending -> PackText(stringResource(R.string.voice_pack_pending), muted)
+        PackUi.Started -> PackText(stringResource(R.string.voice_pack_started), muted)
+        PackUi.Done -> PackText(stringResource(R.string.voice_pack_done), muted)
+        is PackUi.Downloading -> PackText(
+            pack.percent?.let {
+                stringResource(R.string.voice_pack_downloading_percent, PersianDigits.toPersian(it.toString()))
+            } ?: stringResource(R.string.voice_pack_downloading),
+            muted,
+        )
+        is PackUi.Failed -> PackText(
+            stringResource(R.string.voice_pack_failed, PersianDigits.toPersian(pack.code.toString())),
+            MaterialTheme.colorScheme.error,
+        )
+    }
+}
+
+@Composable
+private fun PackText(text: String, color: Color) {
+    Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color, modifier = Modifier.padding(top = 4.dp))
 }
 
 /** Microphone outline drawn with Canvas (no extended icon set, keeps the APK small). */

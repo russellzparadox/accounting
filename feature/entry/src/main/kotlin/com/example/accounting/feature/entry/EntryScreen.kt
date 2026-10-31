@@ -146,6 +146,11 @@ fun EntryScreen(
         }
     }
 
+    // Settings button only when the phone has a voice settings screen (checked once per composition).
+    val voiceSettingsAction: (() -> Unit)? = remember(context) {
+        if (canOpenVoiceSettings(context)) ({ openVoiceSettings(context) }) else null
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = { EntryTopBar(onManualEntry = { showManual = true }, onOpenSettings = onOpenSettings) },
@@ -161,7 +166,11 @@ fun EntryScreen(
                 busy = state.busy,
                 listening = voice.listening,
                 voiceError = voice.error,
+                voiceErrorCode = voice.errorCode,
+                voicePack = voice.pack,
                 onMicClick = onMicClick,
+                onPackDownload = { onVoiceAction(VoiceAction.DownloadLanguagePack) },
+                onOpenVoiceSettings = voiceSettingsAction,
                 modifier = Modifier.imePadding().navigationBarsPadding(),
             )
         },
