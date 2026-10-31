@@ -1,5 +1,5 @@
 # T05 — persian-utils
-Status: in_progress
+Status: done
 Depends: T01
 Read first: CLAUDE.md, handouts/T01-android-scaffold.md
 Skills to invoke: persian-writing:persian-writing

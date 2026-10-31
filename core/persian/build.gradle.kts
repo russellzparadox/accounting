@@ -1,17 +1,15 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-}
-
-android {
-    namespace = "com.example.accounting.core.persian"
-    compileSdk = 36
-
-    defaultConfig {
-        minSdk = 26
-    }
+    alias(libs.plugins.kotlin.jvm)
 }
 
 kotlin {
     jvmToolchain(21)
+}
+
+dependencies {
+    testImplementation(libs.kotlin.test.junit5)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

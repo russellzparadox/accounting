@@ -10,8 +10,8 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T01b | design-system | T00 | done |
 | T02 | accounting-rules | T00 | done (needs accountant review) |
 | T03 | domain-core | T02, T01 | done (26 tests pass in scratch JVM project) |
-| T04 | room-persistence | T03 | todo |
-| T05 | persian-utils | T01 | in_progress |
+| T04 | room-persistence | T03, T05 | in_progress |
+| T05 | persian-utils | T01 | done (105 tests) |
 | T06 | backend-llm-proxy | T02, T03 | done (109 tests, mock eval 58/58; live LLM unverified until T13) |
 | T07 | nl-pipeline | T03, T05, T06 | todo |
 | T08 | entry-ui | T01b, T04, T07 | todo |
