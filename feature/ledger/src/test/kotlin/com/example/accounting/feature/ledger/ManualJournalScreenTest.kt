@@ -1,7 +1,7 @@
 package com.example.accounting.feature.ledger
 
 import android.content.Context
-import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -72,7 +72,7 @@ class ManualJournalScreenTest {
                 ManualJournalScreen(ui = ui(totals), onAction = {}, onClose = {})
             }
         }
-        compose.onNodeWithText(str(R.string.manual_difference, toman(1_000_000L))).assertExists()
+        compose.onNodeWithText(str(R.string.manual_difference, toman(1_000_000L))).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.manual_save)).assertIsNotEnabled()
     }
 
@@ -85,7 +85,7 @@ class ManualJournalScreenTest {
                 ManualJournalScreen(ui = ui(totals), onAction = { actions += it }, onClose = {})
             }
         }
-        compose.onNodeWithText(str(R.string.manual_balanced)).assertExists()
+        compose.onNodeWithText(str(R.string.manual_balanced)).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.manual_save)).performClick()
         compose.runOnIdle {
             assertEquals(listOf(ManualAction.Save), actions)
