@@ -82,13 +82,14 @@ class ManualJournalViewModelTest {
     }
 
     @Test
-    fun tomanUnitRejectsAmountThatIsNotWholeToman() {
+    fun tomanUnitReadsTypedAmountAsTomanAndStoresRial() {
         SettingsRepository(context).setAmountUnit(AmountUnit.TOMAN)
         val vm = newVm()
         fillBalanced(vm, debit = "1100", credit = "4100", amount = "5000001")
-        val ui = awaitValue({ vm.ui.value }) { state -> state.rows.any { !it.amountValid } }
-        assertEquals(AmountUnit.TOMAN, ui.unit)
-        assertFalse(ui.canSave)
+        val ready = awaitValue({ vm.ui.value }) { it.canSave }
+        assertEquals(AmountUnit.TOMAN, ready.unit)
+        // 5 000 001 toman = 50 000 010 rial.
+        assertEquals(50_000_010L, ready.check.debitRial)
     }
 
     private fun <T> awaitValue(read: () -> T, ok: (T) -> Boolean): T {
