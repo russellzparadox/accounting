@@ -30,7 +30,8 @@ dependencies {
     implementation(project(":core:domain"))
     implementation(project(":core:persian"))
 
-    implementation(libs.androidx.room.runtime)
+    // api: AppDatabase extends RoomDatabase, so consumers (app DI module, feature:entry tests) need it on their compile classpath.
+    api(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.kotlinx.coroutines.core)
     ksp(libs.androidx.room.compiler)
