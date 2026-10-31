@@ -104,6 +104,9 @@ class RealAppFlowTest {
         clickNode(tap(str(EntryR.string.action_manual_entry)))
         composeRule.onNode(hasTestTag(MANUAL_AMOUNT_FIELD_TAG)).performTextReplacement("500000")
         clickNode(hasTestTag(MANUAL_SUBMIT_TAG))
+        // The manual sheet hands the draft to the confirmation dialog (ConfirmationCard); confirm to commit.
+        waitForNode(hasText(str(EntryR.string.confirm_title)))
+        clickNode(tap(str(EntryR.string.confirm_action)))
         val committed = str(EntryR.string.committed_notice, PersianDigits.toPersian("1"))
         waitForNode(hasText(committed))
         screenshot("01-entry-committed")
