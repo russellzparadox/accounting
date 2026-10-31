@@ -28,6 +28,8 @@ android {
         versionCode = ciBuildNumber ?: 1
         versionName = if (ciBuildNumber != null) "0.1.$ciBuildNumber" else "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // R8 for the androidTest APK when the qa variant is minified. Rules: app/proguard-test-rules.pro.
+        testProguardFiles("proguard-test-rules.pro")
     }
 
     signingConfigs {
