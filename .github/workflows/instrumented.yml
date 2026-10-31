@@ -51,7 +51,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 1200
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: "status=0; ./gradlew --stacktrace :app:connectedDebugAndroidTest || status=$?; mkdir -p qa-artifacts; adb pull /sdcard/Android/data/com.example.accounting/files/qa qa-artifacts/ || echo 'adb pull of qa folder failed'; exit $status"
+          script: "status=0; mkdir -p qa-artifacts; ./gradlew --stacktrace :app:connectedDebugAndroidTest > qa-artifacts/gradle-instrumented.log 2>&1 || status=$?; tail -n 60 qa-artifacts/gradle-instrumented.log; adb logcat -d -v threadtime > qa-artifacts/logcat-full.txt 2>&1 || echo 'adb logcat failed'; grep -E 'com[.]example[.]accounting|AndroidRuntime|TestRunner|androidx[.]test|Room|Hilt|FATAL' qa-artifacts/logcat-full.txt > qa-artifacts/logcat.txt || true; adb pull /sdcard/Android/data/com.example.accounting/files/qa qa-artifacts/ || echo 'adb pull of qa folder failed'; exit $status"
 
       - name: Check that QA screenshots and PDF pages were pulled
         if: always()
@@ -80,3 +80,35 @@ jobs:
           path: |
             app/build/reports/androidTests/
             app/build/outputs/androidTest-results/
+
+      # Last step on purpose: `get_job_logs` tail shows it first. Prints the Gradle failure lines and each failed
+      # androidTest case (name + first lines of the message). Full detail is in the uploaded artifacts.
+      - name: Failure summary (short, read this first)
+        if: failure()
+        run: |
+          echo "== gradle failure lines (qa-artifacts/gradle-instrumented.log) =="
+          grep -E '^e: |What went wrong|FAILED|Execution failed|Test run failed|Instrumented test' -A3 qa-artifacts/gradle-instrumented.log 2>/dev/null | head -60 || echo "no gradle log"
+          echo "== failed androidTest cases =="
+          python3 - <<'PY' || true
+          import glob, xml.etree.ElementTree as ET
+          n = 0
+          for f in sorted(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True)):
+              try:
+                  root = ET.parse(f).getroot()
+              except Exception as e:
+                  print(f"unparseable: {f}: {e}")
+                  continue
+              for tc in root.iter('testcase'):
+                  for fl in list(tc.findall('failure')) + list(tc.findall('error')):
+                      n += 1
+                      if n > 10:
+                          break
+                      msg = (fl.get('message') or '').splitlines()[:3]
+                      print(f"FAILED {tc.get('classname')}.{tc.get('name')}")
+                      for line in msg:
+                          print(f"  {line[:300]}")
+          print(f"total failed testcases: {n}")
+          print("androidTest result files: " + str(len(glob.glob('app/build/outputs/androidTest-results/**/*.xml', recursive=True))))
+          PY
+          echo "== qa-artifacts =="
+          find qa-artifacts -type f 2>/dev/null | sort | head -60 || true
