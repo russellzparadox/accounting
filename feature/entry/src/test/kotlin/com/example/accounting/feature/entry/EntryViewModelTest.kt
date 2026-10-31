@@ -24,6 +24,7 @@ import com.example.accounting.core.domain.pipeline.ParsedIntent
 import com.example.accounting.core.domain.pipeline.ParserResult
 import com.example.accounting.core.domain.pipeline.PipelineError
 import com.example.accounting.core.persian.AmountUnit
+import com.example.accounting.core.data.speech.SpeechDiagnostics
 import com.example.accounting.core.data.speech.SpeechEvent
 import android.os.Looper
 import java.time.Clock
@@ -353,7 +354,7 @@ class EntryViewModelTest {
     fun spokenNumberWordsReachDraftAndNothingCommitsOnItsOwn() = runBlocking {
         configure()
         val speech = FakeSpeechSource()
-        val voice = VoiceViewModel(speech)
+        val voice = VoiceViewModel(speech, SpeechDiagnostics(), FakeLanguagePack())
         voice.onAction(VoiceAction.Start(""))
         speech.emit(SpeechEvent.Final(SPOKEN_TEXT))
         shadowOf(Looper.getMainLooper()).idle()
