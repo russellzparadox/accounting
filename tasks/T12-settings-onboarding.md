@@ -1,5 +1,5 @@
 # T12 — settings-onboarding
-Status: in_progress
+Status: partial (CI green run 41201166431 on 1587d63; see handouts/T12-settings-onboarding.md)
 Depends: T08
 Read first: CLAUDE.md, handouts/T08-entry-ui.md
 Skills to invoke: design:design-system, design:ux-copy, persian-writing:persian-writing

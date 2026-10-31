@@ -22,7 +22,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T10 | ledger-ui | T04, T08 | done (fix rounds 1+2; final CI run 41194728898 success on 0f959e9; audit 20 MET, 3 PARTIAL, 0 NOT MET; see handouts/T10-ledger-ui.md) |
 | T10b | manual-journal-editor | T08, T10 | done (CI green run 102, build #102; D1+D3 carried to T12) |
 | T11 | reports | T10 | done (CI green run 109, build #109; PDF render unverified -> T13; unit setting -> T12) |
-| T12 | settings-onboarding | T08, T10b, T11 | in_progress |
+| T12 | settings-onboarding | T08, T10b, T11 | partial (CI green run 41201166431 on 1587d63; device checks open; fiscal year not wired; D3 filter and quick sheet untested; see handouts/T12-settings-onboarding.md) |
 | T13 | qa | T07, T08, T09, T10, T11, T12 | todo |
 | T14 | release-prep | T13 | todo |
 
