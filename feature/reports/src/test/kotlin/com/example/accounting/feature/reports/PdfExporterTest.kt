@@ -50,24 +50,34 @@ class PdfExporterTest {
         balanced = balanced,
     )
 
+    /** Diagnostic (attempt 2): on failure, the top stack frames go into the message so CI shows where it broke. */
+    private fun renderOrExplain(t: ReportTable, out: ByteArrayOutputStream): Int = try {
+        PdfExporter.render(context, t, out)
+    } catch (e: Throwable) {
+        val frames = e.stackTrace.take(6).joinToString(" < ") {
+            "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}"
+        }
+        throw AssertionError("render ${e.javaClass.simpleName}: ${e.message} @ $frames", e)
+    }
+
     @Test
     fun longReportBreaksIntoRepeatedHeaderPages() {
         val out = ByteArrayOutputStream()
-        val pages = PdfExporter.render(context, table(rows = 120), out)
+        val pages = renderOrExplain(table(rows = 120), out)
         assertTrue("expected several pages, got $pages", pages > 1)
         assertTrue(out.size() > 0)
     }
 
     @Test
     fun shortReportFitsOnOnePage() {
-        val pages = PdfExporter.render(context, table(rows = 3), ByteArrayOutputStream())
+        val pages = renderOrExplain(table(rows = 3), ByteArrayOutputStream())
         assertEquals(1, pages)
     }
 
     @Test
     fun unbalancedReportStillRendersWithWarning() {
         val out = ByteArrayOutputStream()
-        assertTrue(PdfExporter.render(context, table(rows = 2, balanced = false), out) >= 1)
+        assertTrue(renderOrExplain(table(rows = 2, balanced = false), out) >= 1)
         assertTrue(out.size() > 0)
     }
 }
