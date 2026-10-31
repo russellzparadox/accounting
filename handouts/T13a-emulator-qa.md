@@ -1,79 +1,79 @@
 # Handout T13a — emulator-qa
-Status: partial
+Status: done
 
 ## Summary
-- Instrumented tests PASS on API 34 emulator: run https://github.com/russellzparadox/accounting/actions/runs/41207166016 (head 6775801): `Run instrumented tests` success, 0 failed testcases.
-- Workflow still RED: `Check that QA screenshots and PDF pages were pulled` failed (0 PNG). qa/ folder never reached `qa-artifacts`. No PNG/PDF/CSV artifact.
-- `android` workflow green on 6775801: run https://github.com/russellzparadox/accounting/actions/runs/41207166146.
-- Push cap reached (6/6 FIX ROUND 1 pushes). Final commits (this handout, task status, README row) are local only, NOT pushed.
+- Instrumented run GREEN: https://github.com/russellzparadox/accounting/actions/runs/41208267404 (head db62fac). Tests pass, QA files pulled, gate passed.
+- Pull annotation (job 124557715124): `pulled 13 files from files/qa`. Listing: 10 screenshots, `trial-balance-page-1.png`, `trial-balance.pdf`, `trial-balance.csv`.
+- Root cause of earlier 0-file pulls: `connectedDebugAndroidTest` uninstalls app + test APK when it ends, which deleted `/data/data/com.example.accounting/files/qa` before the pull. Fixed with `-Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true` (commit db62fac). Confirmed by diag notice: `package:com.example.accounting` still installed after Gradle.
+- `android` run on db62fac: https://github.com/russellzparadox/accounting/actions/runs/41208261720 = success.
+- Final `android` run for the docs commit: see `git log` / runs list for this branch (pushed after this handout).
 
 ## Files created/changed
-- `.github/workflows/instrumented.yml`: gradle output tee'd to `qa-artifacts/gradle-instrumented.log`; logcat `logcat-full.txt` + filtered `logcat.txt`; qa pull via `.github/scripts/pull-qa.sh`; last step `Failure summary` (prints + emits `::error` annotations per failed testcase / gradle failure line).
-- `.github/scripts/pull-qa.sh` (new): `adb pull` of external `qa/`, then `run-as` per-file fallback, logs device listings.
-- `app/src/androidTest/kotlin/com/example/accounting/qa/RealAppFlowTest.kt`: imports `onFirst`, `assertCountEquals`; confirm dialog step (`confirm_title` -> `confirm_action`) after manual submit; `waitForNode` throws step-named AssertionError with visible text and saves `qa/fail-timeout.png` on timeout.
-- `app/src/androidTest/kotlin/com/example/accounting/qa/ReportExportTest.kt`: second posting account 1200 -> 1201 (1200 is control account, parent of 1201; domain guard `not postable` is correct).
-- `docs/CI.md`: how to read red emulator run (annotations API, pull-qa fallback).
-- `tasks/T13a-emulator-qa.md`: FIX ROUND 1 notes (uncommitted edit included in first commit).
+- `.github/workflows/instrumented.yml`: gradle with leaveApksInstalledAfterRun flag; logcat `logcat-full.txt` + filtered `logcat.txt`; qa pull via `.github/scripts/pull-qa.sh`; gate step (10 screenshots, PDF, page PNG, CSV); `Failure summary` step emits `::error` annotations.
+- `.github/scripts/pull-qa.sh`: `::notice title=qa-diag` lines (installed packages, `run-as ls -R files/qa`); run-as tar pull with per-file cat fallback; `::notice title=qa-pull` count.
+- `app/src/androidTest/kotlin/com/example/accounting/qa/RealAppFlowTest.kt`, `ReportExportTest.kt`: test-side fixes from FIX ROUND 1 (imports, confirm dialog step, step-named timeout errors, fixture account 1200 -> 1201).
+- `docs/CI.md`: how to run and read the instrumented workflow.
+- `tasks/T13a-emulator-qa.md`: status and fix-round notes.
+- No production app code changed.
 
 ## Public interfaces / contracts
 - Test tags unchanged: `MANUAL_AMOUNT_FIELD_TAG`, `MANUAL_SUBMIT_TAG`.
-- QA output dir: `QaOutput.dir(context)` = `getExternalFilesDir(null)/qa` (fallback `filesDir/qa` if external null). No production code changed.
+- QA output dir: `QaOutput.dir(context)` = `getExternalFilesDir(null)/qa`, fallback `filesDir/qa`. Pull reads `files/qa` via run-as (debug build is debuggable). The external-storage path is not what the pull reads.
 
 ## Decisions made (+why)
-- Did not change app/domain code. All 5 red runs were test/workflow faults.
+- No app/domain change. Red runs before FIX ROUND 3 were test, fixture, workflow or retrieval faults.
 - Fixture 1200 -> 1201: posting to control account is rejected by domain by design.
-- Failure diagnostics moved to `::error` annotations: job-log tail (130 lines) was post-job cleanup in later runs, hiding the failure.
-- Pull fallback via `run-as` assumes debug build is debuggable (it is by default).
+- Failure diagnostics as `::error` annotations: job-log tail is often post-job cleanup.
+- Pull via run-as tar, because `adb pull` cannot read the app's Android/data dir on API 30+.
 
 ## How verified (run -> result)
 | run | head | result | cause (evidence) |
 |---|---|---|---|
-| 41204585696 | 2183ba2 | failure | no artifacts; tail only. Same test source as 115846b (compile error there), so inferred compile error |
-| 41205154418 | 115846b | failure | `:app:compileDebugAndroidTestKotlin`: RealAppFlowTest unresolved `onFirst`, `assertCountEquals` (read in log) |
-| 41205425739 | 08dea3a | failure | ReportExportTest x2 `account 1200 is not postable`; RealAppFlowTest `ComposeTimeoutException` 15 s (step unknown, read in log) |
-| 41205815518 | b72303d | failure | RealAppFlowTest `waitForNode` timeout for `committed_notice`; visible text = ConfirmationCard "بررسی تراکنش" still open (read in log) |
-| 41206239547 | f8d2373 | failure | cause NOT read (outside tail window; artifact blob host blocked). App+test source identical to next green run 41206716812 |
-| 41206716812 | 382ff9d | instrumented tests PASS, check step FAIL | `total failed testcases: 0`; no PNG pulled |
-| 41207166016 | 6775801 | instrumented tests PASS, check step FAIL | same as above; pull-qa.sh: no PNG via adb pull or run-as |
-- Android workflow: 115846b, 08dea3a, b72303d, f8d2373, 382ff9d, 6775801 all `success` (runs 41205152220, 41205425713, 41205815574, 41206239951, 41206716536, 41207166146).
+| 41204585696 | 2183ba2 | failure | no artifacts; inferred compile error |
+| 41205154418 | 115846b | failure | `:app:compileDebugAndroidTestKotlin` unresolved `onFirst`, `assertCountEquals` |
+| 41205425739 | 08dea3a | failure | ReportExportTest `account 1200 is not postable`; RealAppFlowTest timeout |
+| 41205815518 | b72303d | failure | RealAppFlowTest `waitForNode` timeout on `committed_notice` (confirm card still open) |
+| 41206239547 | f8d2373 | failure | cause not read; identical source passed next (382ff9d). Unexplained |
+| 41206716812 | 382ff9d | tests PASS, pull FAIL | 0 PNG pulled |
+| 41207166016 | 6775801 | tests PASS, pull FAIL | 0 PNG pulled |
+| 41207774274 | 5af39e3 | tests PASS, pull FAIL | `pulled 0 files`; app uninstalled before pull (diagnosed) |
+| 41208267404 | db62fac | SUCCESS | `pulled 13 files from files/qa`, gate green |
 
-## Artifacts (what exists)
-- `androidtest-reports` (uploaded, run 41207166016 and others): JUnit XML + HTML. Size ~141-163 KB.
-- `qa-artifacts` (uploaded): only `gradle-instrumented.log`, `logcat-full.txt`, `logcat.txt`, `qa-listing.txt` (empty listing). NO `qa/*.png`, NO `trial-balance.pdf`, NO `trial-balance.csv`.
-- Note: in-test `QaOutput.screenshot` asserts the PNG is written (non-zero), so screenshots were written on device, but in a folder the pull did not reach.
+## Artifacts
+- `qa-artifacts` (workflow upload, run 41208267404): `qa/` folder (10 screenshots, `trial-balance-page-1.png`, `trial-balance.pdf`, `trial-balance.csv`) + `gradle-instrumented.log`, `logcat-full.txt`, `logcat.txt`.
+- `androidtest-reports`: JUnit XML + HTML under `app/build/outputs/androidTest-results/` and `reports/androidTests/`.
+- Per-file sizes not recorded here (zip not downloaded). Names verified via pull listing annotation.
 
 ## Audit (acceptance criteria, T13a)
-- [MET] Workflow YAML valid; triggers only `workflow_dispatch` + `schedule`; never on push. (`yaml.safe_load` ok, trigger keys verified.)
-- [PARTIAL] One dispatch run `success`. NOT MET: no dispatch run is green. Diagnosed for 5 of 6 runs with URLs above; the 6th (41206239547) unexplained.
-- [NOT MET] Artifacts uploaded (screenshots + PDF page PNGs + PDF). Only logs/listing + androidtest-reports.
-- [MET] Existing `android` workflow still green (6775801 run 41207166146 success).
-- [MET] No tests skipped/weakened. Only test-side change: account 1200 -> 1201 in a fixture (domain rule kept). No `@Ignore`, no removed assertions.
+- [MET] Workflow YAML valid; triggers only `workflow_dispatch` + `schedule`; never on push. (`yaml.safe_load` ok.)
+- [MET] One dispatch run `success`: 41208267404.
+- [MET] Artifacts uploaded: `qa-artifacts` with 10 screenshots, PDF page PNG, PDF, CSV (evidence: pull annotation listing above).
+- [MET] Existing `android` workflow green on db62fac: run 41208261720. Final docs-commit android run: see runs list.
+- [MET] No tests skipped/weakened. Only test-side change is fixture account 1200 -> 1201 (domain rule kept). No `@Ignore`, no removed assertions.
 
-## What the emulator run proved (run 41207166016, tests passed)
-- Real `MainActivity` on API 34 google_apis x86_64 emulator, real Room file, Hilt, navigation:
+## What the emulator run proved (run 41207166016 tests; 41208267404 pull)
+- Real `MainActivity` on API 34 google_apis x86_64 emulator, real Room DB, Hilt, navigation:
   - onboarding accepted through UI;
-  - 500,000 toman cash purchase via manual sheet + confirmation dialog; committed notice with Persian digits;
+  - 500,000 toman cash purchase via manual sheet + confirmation; committed notice with Persian digits;
   - journal row `سند شماره ۱`, document detail `جمع بدهکار: ۵۰۰٬۰۰۰ تومان`;
   - cash account ledger opens; reversal creates reversal row;
   - trial balance preview gross 1,000,000 toman each side, no unbalanced marker;
-  - settings unit rial: journal re-renders in rial, toman string gone;
+  - settings unit rial: journal re-renders in rial;
   - manual journal editor opens.
-- `PdfExporter` writes a PDF: `%PDF-` header, >1000 bytes, >0 pages; each page renders non-blank under `PdfRenderer` (not shaping proof).
-- `CsvExporter`: UTF-8 BOM and Persian column headers present.
-- NOT proven: Persian glyph/shaping correctness in PDF (PdfRenderer only checks ink); screenshot content (not pulled).
+- `PdfExporter` writes a PDF (`%PDF-`, >0 pages); each page renders non-blank under `PdfRenderer`.
+- `CsvExporter`: UTF-8 BOM and Persian headers present.
+- NOT proven: Persian glyph/shaping correctness in PDF (PdfRenderer checks ink only). Screenshot and PDF page content not reviewed by a human yet; PNGs are in `qa-artifacts`.
 
 ## Product bugs found
-- None. All red runs were test/fixture/workflow faults. The "account 1200 not postable" error was correct domain behaviour.
+- None. All red runs were test, fixture, workflow or retrieval faults. "account 1200 not postable" was correct domain behaviour.
 
 ## Open issues / risks
-- [HIGH] qa/ folder not retrieved. `adb pull` of `/sdcard/Android/data/com.example.accounting/files/qa` gave nothing, and `run-as` listing of `/storage/emulated/0/Android/data/.../files/qa` was empty. Likely the test wrote to another dir (e.g. `filesDir/qa` if `getExternalFilesDir` returned null) or adb cannot read Android/data. Next: in `pull-qa.sh` also list `run-as com.example.accounting ls files/qa` and `find /data/user/0/com.example.accounting -name '*.png'`, and emit `::error` for the pull result so it is readable via annotations.
-- [MED] Run 41206239547 failed, identical app/test source passed next (382ff9d). Unexplained; possible emulator flakiness. Not reproduced.
-- [MED] The pull step's diagnostics are in the emulator step log, outside the 130-line tail; annotations only cover test failures.
-- [LOW] `Check that QA screenshots...` makes the job red even when tests pass. Keep as gate, or change to a warning.
-- [LOW] `actions/*@v4` Node 20 deprecation warnings (out of scope, see T01d).
-- Unpushed: this handout and the status/README commits are local only (push cap reached).
+- [MED] Run 41206239547 failed for an unread cause; identical source passed next run (382ff9d). Not reproduced.
+- [LOW] `Check that QA screenshots...` gate makes the job red if any QA file is missing. Intentional; keep.
+- [LOW] `actions/*@v4` Node 20 deprecation warnings and setup-java@v4 deprecation annotation (out of scope, see T01d).
+- [LOW] `ubuntu-latest` migrates to Ubuntu 26 (notice, Oct 2026). Watch for emulator breakage.
 
 ## Next task must know
-- Tests run green on the emulator (`RealAppFlowTest` + `ReportExportTest`). Only the artifact pull is broken.
-- Fix pull first (see HIGH issue). Read failures via check-run annotations: `GET /repos/russellzparadox/accounting/actions/jobs/<id>` -> `check_run_url` -> `/annotations`.
-- Push cap was the binding limit; plan ~3 pushes max for the next attempt.
+- Instrumented workflow: dispatch via Actions tab or API; read results via check-run annotations (`/repos/.../check-runs/<job_id>/annotations`), not job-log tails.
+- Pull works because the workflow passes `leaveApksInstalledAfterRun=true`. Do not drop that flag.
+- Persian shaping in PDF is not verified by machine. Needs a human look at `qa-artifacts/qa/trial-balance-page-1.png`.
