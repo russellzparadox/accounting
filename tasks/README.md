@@ -14,6 +14,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T04 | room-persistence | T03, T05 | done (CI green, 11 Robolectric tests) |
 | T05 | persian-utils | T01 | done (105 tests) |
 | T06 | backend-llm-proxy | T02, T03 | done (109 tests, mock eval 58/58; live LLM unverified until T13) |
+| T06b | openai-compat | T06 | todo (queued after T08a) |
 | T07 | nl-pipeline | T03, T04, T05, T06 | done (CI green run 62; 173 local tests) |
 | T08a | entry-viewmodel | T04, T07 | in_progress |
 | T08 | entry-ui | T01b, T08a | todo |
@@ -25,6 +26,6 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T14 | release-prep | T13 | todo |
 
 ## Run order
-T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T08 -> T09 -> T10 -> T11 -> T12 -> T13 -> T14
+T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T11 -> T12 -> T13 -> T14
 
 Files: `tasks/Txx-slug.md` (from `tasks/_TEMPLATE.md`), `handouts/Txx-slug.md` (from `handouts/_TEMPLATE.md`).
