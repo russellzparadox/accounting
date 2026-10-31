@@ -17,8 +17,8 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T06b | openai-compat | T06 | done (175 backend tests, CI green) |
 | T07 | nl-pipeline | T03, T04, T05, T06 | done (CI green run 62; 173 local tests) |
 | T08a | entry-viewmodel | T04, T07 | done (CI green run 71) |
-| T08 | entry-ui | T01b, T08a | in_progress |
-| T09 | voice-input | T08 | todo |
+| T08 | entry-ui | T01b, T08a | done (CI green run 41191124546; build #86 released) |
+| T09 | voice-input | T08 | in_progress |
 | T10 | ledger-ui | T04, T08 | todo |
 | T10b | manual-journal-editor | T08, T10 | todo |
 | T11 | reports | T10 | todo |
