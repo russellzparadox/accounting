@@ -1,5 +1,5 @@
 # T06b — OpenAI-compatible backend (both directions)
-Status: in_progress
+Status: done
 Depends: T06
 Read first: CLAUDE.md, handouts/T06-backend-llm-proxy.md, handouts/T03-domain-core.md (intent shape), docs/BACKEND.md, docs/LLM_PROMPTS.md, `backend/src/**`, `.github/workflows/backend.yml`
 Skills to invoke: claude-api (Anthropic path stays), persian-writing:persian-writing (if prompt text changes)

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { ExtractInput, LlmClient } from "../src/llm.js";
-import { parseText } from "../src/parse.js";
+import { parseText, type ParseResult } from "../src/parse.js";
 
 export interface Expect {
   clarification?: boolean;
@@ -73,12 +73,19 @@ export function fixtureFor(set: EvalSet, overrides: Map<string, (o: any) => any>
 
 export interface EvalResult { id: string; pass: boolean; problems: string[] }
 
+/** A call that turns one sentence into a ParseResult-shaped outcome (parseText, or the OpenAI route). */
+export type EvalCall = (text: string) => Promise<ParseResult>;
+
 export async function runEval(set: EvalSet, llm: LlmClient): Promise<EvalResult[]> {
+  return runEvalWith(set, (text) => parseText({ text, today: set.today }, llm));
+}
+
+export async function runEvalWith(set: EvalSet, call: EvalCall): Promise<EvalResult[]> {
   const results: EvalResult[] = [];
   for (const s of set.sentences) {
     const problems: string[] = [];
     try {
-      const r = await parseText({ text: s.text, today: set.today }, llm);
+      const r = await call(s.text);
       if (s.expect.clarification) {
         if (r.kind !== "clarification") problems.push(`expected clarification, got ${r.kind}`);
       } else if (r.kind !== "intent") {
@@ -99,4 +106,36 @@ export async function runEval(set: EvalSet, llm: LlmClient): Promise<EvalResult[
     results.push({ id: s.id, pass: problems.length === 0, problems });
   }
   return results;
+}
+
+/**
+ * Drives one sentence through POST /v1/chat/completions of a running proxy and converts the
+ * OpenAI-shaped answer back to a ParseResult. mode "tools" forces the record_transaction tool call;
+ * mode "content" sends no tools and reads JSON from message.content.
+ */
+export function viaOpenAi(baseUrl: string, token: string, mode: "tools" | "content", model = "eval-model"): EvalCall {
+  return async (text) => {
+    const body: Record<string, unknown> = { model, messages: [{ role: "user", content: text }] };
+    if (mode === "tools") {
+      body.tools = [{ type: "function", function: { name: "record_transaction", parameters: { type: "object" } } }];
+      body.tool_choice = { type: "function", function: { name: "record_transaction" } };
+    }
+    const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    if (res.status !== 200) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as { choices: { message: { content: string | null; tool_calls?: { function: { name: string; arguments: string } }[] } }[] };
+    const msg = json.choices[0]!.message;
+    if (mode === "tools" && msg.tool_calls && msg.tool_calls.length > 0) {
+      const fn = msg.tool_calls[0]!.function;
+      const args = JSON.parse(fn.arguments) as Record<string, unknown>;
+      if (fn.name === "ask_clarification") return { kind: "clarification", body: { needs_clarification: { question: String(args.question) } } } as ParseResult;
+      return { kind: "intent", body: args as never };
+    }
+    const parsed = JSON.parse(msg.content ?? "null") as Record<string, unknown>;
+    if (parsed.needs_clarification) return { kind: "clarification", body: parsed as never };
+    return { kind: "intent", body: parsed as never };
+  };
 }
