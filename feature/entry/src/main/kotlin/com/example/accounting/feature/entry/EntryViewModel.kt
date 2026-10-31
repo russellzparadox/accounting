@@ -3,6 +3,7 @@ package com.example.accounting.feature.entry
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
 import com.example.accounting.core.data.nlp.NlParserProvider
 import com.example.accounting.core.data.repo.LedgerRepository
@@ -76,6 +77,8 @@ class EntryViewModel @Inject constructor(
             is EntryAction.Discard -> discard(action.draftId)
             is EntryAction.UseDetectedAmount -> useDetectedAmount(action.draftId)
             is EntryAction.UseModelAmount -> useModelAmount(action.draftId)
+            is EntryAction.EditAmount -> editAmount(action.draftId, action.amountRial)
+            is EntryAction.SaveBackendConfig -> saveBackendConfig(action.baseUrl, action.token)
             is EntryAction.Undo -> undo(action.docId)
             is EntryAction.SubmitManual -> submitManual(action)
         }
@@ -179,6 +182,25 @@ class EntryViewModel @Inject constructor(
         val card = mutableState.value.draft(draftId) ?: return
         rebase(card, card.modelRial)
     }
+
+    private suspend fun editAmount(draftId: String, rial: Long) {
+        val card = mutableState.value.draft(draftId) ?: return
+        if (rial <= 0L) {
+            appendItem(errorItem(EntryErrorKind.BAD_RESPONSE, null))
+            return
+        }
+        rebase(card, rial)
+    }
+
+    private fun saveBackendConfig(baseUrl: String, token: String) {
+        configStore.save(BackendConfig(baseUrl, token))
+        mutableState.update { s ->
+            s.copy(items = s.items.filterNot { it is ChatItem.Error && it.kind == EntryErrorKind.NOT_CONFIGURED })
+        }
+    }
+
+    /** Display name for an account code. Party accounts (معین) are not in the chart, so the code is shown. */
+    fun accountName(code: String): String = chart.account(code)?.nameFa ?: code
 
     private suspend fun rebase(card: ChatItem.DraftCard, rial: Long) {
         val source = card.source ?: return
