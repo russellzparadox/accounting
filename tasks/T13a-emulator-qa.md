@@ -1,5 +1,5 @@
 # T13a — Emulator QA job (real app on an Android emulator in CI)
-Status: in_progress
+Status: partial
 Depends: T12b
 Read first: CLAUDE.md, handouts/T11-reports.md (PDF unverified, A3), handouts/T12-settings-onboarding.md (onboarding gate, token cipher), handouts/T12b-settings-follow-through.md, handouts/T10-ledger-ui.md, handouts/T08-entry-ui.md, handouts/T01d-ci-green.md, handouts/T01e-auto-release.md, docs/CI.md, `.github/workflows/android.yml`
 Skills to invoke: none
