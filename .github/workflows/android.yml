@@ -77,3 +77,23 @@ jobs:
             exit 0
           fi
           grep -E '^e: |^w: .*error|What went wrong|FAILURE' -A4 gradle-build.log | head -80 || true
+          echo "== failed unit tests =="
+          python3 - <<'PY' || true
+          import glob, xml.etree.ElementTree as ET
+          n = 0
+          for f in glob.glob('**/build/test-results/**/*.xml', recursive=True):
+              try:
+                  root = ET.parse(f).getroot()
+              except Exception as e:
+                  print(f"unparseable: {f}: {e}")
+                  continue
+              for tc in root.iter('testcase'):
+                  for fl in list(tc.findall('failure')) + list(tc.findall('error')):
+                      n += 1
+                      if n > 30:
+                          break
+                      msg = fl.get('message') or ''
+                      print(f"FAILED {tc.get('classname')}.{tc.get('name')}")
+                      print(f"  {str(msg)[:300]}")
+          print(f"total failed testcases: {n}")
+          PY
