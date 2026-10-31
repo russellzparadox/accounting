@@ -5,7 +5,8 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 |----|------|---------|--------|
 | T00 | bootstrap | none | done |
 | T01 | android-scaffold | T00 | partial (build unverified, needs CI) |
-| T01c | github-actions | T01 | done (first CI run pending) |
+| T01c | github-actions | T01 | done |
+| T01d | ci-green | T01,T01c,T03 | in_progress |
 | T01b | design-system | T00 | done |
 | T02 | accounting-rules | T00 | done (needs accountant review) |
 | T03 | domain-core | T02, T01 | done (26 tests pass in scratch JVM project) |
@@ -22,6 +23,6 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T14 | release-prep | T13 | todo |
 
 ## Run order
-T00 -> T01 -> T01c -> T01b -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08 -> T09 -> T10 -> T11 -> T12 -> T13 -> T14
+T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08 -> T09 -> T10 -> T11 -> T12 -> T13 -> T14
 
 Files: `tasks/Txx-slug.md` (from `tasks/_TEMPLATE.md`), `handouts/Txx-slug.md` (from `handouts/_TEMPLATE.md`).
