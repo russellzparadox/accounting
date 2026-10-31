@@ -2,18 +2,22 @@ name: android
 
 on:
   push:
+    # Branch pushes only. Tags (build-<n>, latest, v*) never match this filter,
+    # so release/tag creation by the publish job cannot start a new run.
+    # Releases/tags made with GITHUB_TOKEN do not start workflows either.
     branches: ["**"]
   pull_request:
 
 permissions:
   contents: read
 
-concurrency:
-  group: android-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build:
+    # Job-level so superseded BUILD jobs are cancelled. The publish job has its
+    # own group (cancel-in-progress: false) and is never cancelled by a newer push.
+    concurrency:
+      group: android-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -46,7 +50,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          ./gradlew --stacktrace lint test assembleDebug 2>&1 | tee gradle-build.log
+          ./gradlew --stacktrace -PbuildNumber=${{ github.run_number }} lint test assembleDebug 2>&1 | tee gradle-build.log
 
       - name: Upload debug APK
         if: success()
@@ -97,3 +101,134 @@ jobs:
                       print(f"  {str(msg)[:300]}")
           print(f"total failed testcases: {n}")
           PY
+
+  # Publishes the debug APK as build-<n> (+ rolling `latest`).
+  # Runs only if build succeeded (a cancelled/failed build skips it, so nothing
+  # is published), only for push events on the listed branches (never PRs,
+  # forks, dependabot, tags). contents: write is granted to this job only.
+  publish:
+    needs: build
+    if: success() && github.event_name == 'push' && (github.ref == 'refs/heads/claude/dreamy-mccarthy-mczm8c' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    # Not cancelled by newer pushes: once started, a publish always finishes.
+    concurrency:
+      group: publish-${{ github.ref }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_NUMBER: ${{ github.run_number }}
+      COMMIT_SHA: ${{ github.sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      KEEP_BUILDS: "15"
+    steps:
+      - name: Checkout (full history for changelog)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download debug APK from build job
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+          path: incoming
+
+      - name: Prepare APK assets and release notes
+        run: |
+          set -euo pipefail
+          SHORT="${COMMIT_SHA:0:7}"
+          apk=$(ls incoming/*.apk | head -n 1)
+          VERSIONED="accounting-debug-${RUN_NUMBER}-${SHORT}.apk"
+          mkdir -p dist
+          cp "$apk" "dist/$VERSIONED"
+          cp "$apk" dist/accounting-debug-latest.apk
+          SUM=$(sha256sum "dist/$VERSIONED" | cut -d' ' -f1)
+          SUBJECT=$(git log -1 --format=%s "$COMMIT_SHA")
+          # Previous build = highest build-<n> with n < RUN_NUMBER.
+          PREV=$(gh release list --limit 300 --json tagName --jq '.[].tagName' \
+            | { grep -E '^build-[0-9]+$' || true; } | sed 's/^build-//' \
+            | awk -v n="$RUN_NUMBER" '$1 + 0 < n + 0' | sort -n | tail -n 1)
+          RANGE=""
+          if [ -n "$PREV" ]; then
+            PREV_SHA=$(gh release view "build-$PREV" --json targetCommitish --jq .targetCommitish)
+            if git rev-parse -q --verify "$PREV_SHA^{commit}" >/dev/null; then
+              RANGE="$PREV_SHA..$COMMIT_SHA"
+            fi
+          fi
+          {
+            echo "Build #$RUN_NUMBER ($SHORT): $SUBJECT"
+            echo
+            echo "- Commit: $COMMIT_SHA"
+            echo "- CI run: $RUN_URL"
+            echo "- APK: $VERSIONED (stable link: accounting-debug-latest.apk)"
+            echo "- SHA-256: $SUM"
+            echo "- Min Android: 8.0 (API 26)"
+            echo "- Debug build, signed with the debug key, for testing only."
+            echo
+            if [ -n "$RANGE" ]; then
+              echo "Commits since build-$PREV:"
+              git log --format='- %h %s' "$RANGE" -n 50
+            else
+              echo "Recent commits:"
+              git log --format='- %h %s' "$COMMIT_SHA" -n 20
+            fi
+          } > dist/notes.md
+          cat dist/notes.md
+
+      - name: Publish build-<n> release (draft first, then public)
+        run: |
+          set -euo pipefail
+          SHORT="${COMMIT_SHA:0:7}"
+          TAG="build-${RUN_NUMBER}"
+          VERSIONED="accounting-debug-${RUN_NUMBER}-${SHORT}.apk"
+          # Idempotent re-run: remove our own earlier attempt for this run number.
+          gh release delete "$TAG" --yes --cleanup-tag >/dev/null 2>&1 || true
+          # Draft = invisible until the APK is attached; tag is created on publish.
+          gh release create "$TAG" "dist/$VERSIONED" --draft --prerelease \
+            --target "$COMMIT_SHA" --title "Build #$RUN_NUMBER ($SHORT)" \
+            --notes-file dist/notes.md
+          gh release edit "$TAG" --draft=false
+
+      - name: Move rolling `latest` tag and release
+        run: |
+          set -euo pipefail
+          SHORT="${COMMIT_SHA:0:7}"
+          if gh api "repos/$GH_REPO/git/ref/tags/latest" >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/latest" -f sha="$COMMIT_SHA" -F force=true >/dev/null
+          else
+            gh api -X POST "repos/$GH_REPO/git/refs" -f ref=refs/tags/latest -f sha="$COMMIT_SHA" >/dev/null
+          fi
+          if gh release view latest >/dev/null 2>&1; then
+            gh release upload latest dist/accounting-debug-latest.apk --clobber
+            gh release edit latest --title "Latest: build #$RUN_NUMBER ($SHORT)" --notes-file dist/notes.md
+          else
+            gh release create latest dist/accounting-debug-latest.apk --prerelease \
+              --target "$COMMIT_SHA" --title "Latest: build #$RUN_NUMBER ($SHORT)" \
+              --notes-file dist/notes.md
+          fi
+
+      - name: Retention (keep newest KEEP_BUILDS build-* releases)
+        # Only tags matching ^build-[0-9]+$ are candidates. latest and v* never match.
+        run: |
+          set -euo pipefail
+          gh release list --limit 300 --json tagName --jq '.[].tagName' \
+            | { grep -E '^build-[0-9]+$' || true; } \
+            | sed 's/^build-//' | sort -rn \
+            | tail -n +"$((KEEP_BUILDS + 1))" \
+            | while read -r n; do
+                [ -n "$n" ] || continue
+                echo "retention: deleting build-$n and its tag"
+                gh release delete "build-$n" --yes --cleanup-tag
+              done
+
+      - name: Verify published releases
+        run: |
+          set -euo pipefail
+          for t in "build-${RUN_NUMBER}" latest; do
+            gh release view "$t" --json tagName,isDraft,isPrerelease,assets \
+              --jq '{tagName, isDraft, isPrerelease, assets: [.assets[].name]}'
+            gh release view "$t" --json body --jq .body | grep 'SHA-256'
+          done

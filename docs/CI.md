@@ -1,7 +1,8 @@
 # CI
 
 ## Workflows (`.github/workflows/`)
-- `android.yml`: every push (all branches) + PR. JDK 21, `./gradlew --stacktrace lint test assembleDebug` (output tee'd to `gradle-build.log`). Uploads `app-debug` APK. On failure uploads `android-reports` (lint, test, build reports) and prints a short error summary as the LAST step of the job.
+- `android.yml`: every push (all branches) + PR. JDK 21, `./gradlew --stacktrace -PbuildNumber=<run_number> lint test assembleDebug` (output tee'd to `gradle-build.log`). Uploads `app-debug` APK. On failure uploads `android-reports` (lint, test, build reports) and prints a short error summary as the LAST step of the job.
+  - `publish` job (needs `build`, only if build succeeded, only for push to `claude/dreamy-mccarthy-mczm8c`, `main` or `master`): publishes the APK as GitHub Release `build-<run_number>` and moves the rolling prerelease `latest`. Keeps the newest 15 `build-*` releases. Details under "Testing a build on your phone".
 - `backend.yml`: push/PR touching `backend/**`. Node 20, `npm ci`, `npm test`, `npm run build`. Skips with a log line if `backend/package.json` is missing. `npm run build` needs a `build` script in `backend/package.json`.
 - `release.yml`: tag `v*`. `assembleRelease`, then signs with `apksigner` if signing secrets exist, else uploads unsigned. Creates a GitHub Release with the APK.
 - `dependabot.yml`: weekly updates for gradle, npm (`/backend`, inert until it exists), github-actions.

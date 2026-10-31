@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// CI passes -PbuildNumber=<github.run_number>. Local builds keep versionCode 1 / 0.1.0.
+val ciBuildNumber: Int? = findProperty("buildNumber")?.toString()?.toIntOrNull()
+
 android {
     namespace = "com.example.accounting"
     compileSdk = 36
@@ -14,8 +17,8 @@ android {
         applicationId = "com.example.accounting"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = ciBuildNumber ?: 1
+        versionName = if (ciBuildNumber != null) "0.1.$ciBuildNumber" else "0.1.0"
     }
 
     buildTypes {
