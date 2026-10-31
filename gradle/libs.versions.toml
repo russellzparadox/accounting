@@ -1,13 +1,13 @@
 [versions]
 # Gradle 8.14.3 (latest 8.x; AGP 8.x does not support Gradle 9.x)
-agp = "8.13.0"
-kotlin = "2.2.20"
-ksp = "2.2.20-2.0.4"
-hilt = "2.57.1"
-composeBom = "2025.10.00"
+agp = "8.13.2"
+kotlin = "2.4.21"
+ksp = "2.3.12"
+hilt = "2.60.1"
+composeBom = "2026.09.00"
 activityCompose = "1.10.1"
-coreKtx = "1.16.0"
-kotlinxSerialization = "1.9.0"
+coreKtx = "1.19.1"
+kotlinxSerialization = "1.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
