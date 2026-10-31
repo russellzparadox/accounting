@@ -1,5 +1,5 @@
 # T10 — ledger-ui
-Status: partial
+Status: done
 Depends: T04, T08
 Read first: CLAUDE.md, handouts/T04-room-persistence.md, handouts/T08-entry-ui.md
 Skills to invoke: design:design-system, design:ux-copy, design:accessibility-review
