@@ -62,6 +62,12 @@ fun EntryRoute(modifier: Modifier = Modifier) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val voiceModel: VoiceViewModel = hiltViewModel()
     val voice by voiceModel.state.collectAsStateWithLifecycle()
+    val input by viewModel.input.collectAsStateWithLifecycle()
+    // Recognized text fills the field. It is never sent here: the user taps send. Re-entering the tab re-delivers the
+    // last transcript; EntryViewModel ignores it because its seq was already applied.
+    LaunchedEffect(voice.transcript) {
+        voice.transcript?.let(viewModel::onVoiceTranscript)
+    }
     // Leaving the foreground ends a listening session; the recognizer is released in VoiceViewModel.onCleared.
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, voiceModel) {
@@ -78,11 +84,14 @@ fun EntryRoute(modifier: Modifier = Modifier) {
         accountName = viewModel::accountName,
         voice = voice,
         onVoiceAction = voiceModel::onAction,
+        input = input,
+        onInputChange = viewModel::onInputChange,
     )
 }
 
 /**
- * Chat-style entry screen. Stateless apart from the input text and the open sheet/dialog.
+ * Chat-style entry screen. The unsent input text comes in as [input] (held by EntryViewModel). Only the open
+ * sheet/dialog is local state.
  * Every change goes out as an [EntryAction]; nothing is written here.
  */
 @Composable
@@ -93,19 +102,14 @@ fun EntryScreen(
     accountName: (String) -> String = { it },
     voice: VoiceUiState = VoiceUiState(),
     onVoiceAction: (VoiceAction) -> Unit = {},
+    input: String = "",
+    onInputChange: (String) -> Unit = {},
 ) {
-    var input by rememberSaveable { mutableStateOf("") }
     var showManual by rememberSaveable { mutableStateOf(false) }
     var showConfig by rememberSaveable { mutableStateOf(false) }
     val notConfigured = state.items.any { it is ChatItem.Error && it.kind == EntryErrorKind.NOT_CONFIGURED }
     LaunchedEffect(notConfigured) {
         if (notConfigured) showConfig = true
-    }
-
-    // Recognized text fills the field. It is never sent here: the user taps send.
-    LaunchedEffect(voice.transcript) {
-        val transcript = voice.transcript
-        if (transcript != null) input = transcript.text
     }
 
     val context = LocalContext.current
@@ -139,10 +143,10 @@ fun EntryScreen(
         bottomBar = {
             ChatInputBar(
                 text = input,
-                onTextChange = { input = it },
+                onTextChange = onInputChange,
                 onSend = {
                     onAction(EntryAction.Submit(input))
-                    input = ""
+                    onInputChange("")
                 },
                 sendEnabled = input.isNotBlank() && !state.busy && !voice.listening,
                 busy = state.busy,

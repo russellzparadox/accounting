@@ -100,6 +100,14 @@ data class TrialTuple(
     val credit: Long,
 )
 
+/** A reversal and the document it reverses, with both document numbers. */
+data class ReversalLinkTuple(
+    val originalId: String,
+    val originalNumber: Int,
+    val reversalId: String,
+    val reversalNumber: Int,
+)
+
 @Dao
 interface JournalDao {
     @Insert
@@ -120,6 +128,16 @@ interface JournalDao {
     /** Id of the document that reverses [id], or null. Unique by schema (reversal_of_id is unique). */
     @Query("SELECT id FROM journal_entry WHERE reversal_of_id = :id")
     suspend fun reversalIdOf(id: String): String?
+
+    /** Every reversal with the document it reverses, across all fiscal years and dates. Re-emits on journal change. */
+    @Query(
+        """SELECT o.id AS originalId, o.doc_number AS originalNumber,
+                  r.id AS reversalId, r.doc_number AS reversalNumber
+           FROM journal_entry r
+           INNER JOIN journal_entry o ON o.id = r.reversal_of_id
+           ORDER BY r.fiscal_year, r.doc_number""",
+    )
+    fun observeReversalLinks(): Flow<List<ReversalLinkTuple>>
 
     @Transaction
     @Query("SELECT * FROM journal_entry WHERE id = :id")

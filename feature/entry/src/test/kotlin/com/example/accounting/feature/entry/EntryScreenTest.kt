@@ -3,6 +3,9 @@ package com.example.accounting.feature.entry
 import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
@@ -138,11 +141,59 @@ class EntryScreenTest {
     fun sendDispatchesSubmitWithTypedText() {
         val actions = mutableListOf<EntryAction>()
         compose.setContent {
-            AccountingTheme { EntryScreen(state = EntryUiState(), onAction = { actions += it }) }
+            AccountingTheme {
+                var text by remember { mutableStateOf("") }
+                EntryScreen(
+                    state = EntryUiState(),
+                    onAction = { actions += it },
+                    input = text,
+                    onInputChange = { text = it },
+                )
+            }
         }
         compose.onNode(hasSetTextAction()).performTextInput(SODA_TEXT)
         compose.onNodeWithContentDescription(str(R.string.input_send_cd)).assertIsEnabled().performClick()
         assertEquals(listOf<EntryAction>(EntryAction.Submit(SODA_TEXT)), actions)
+    }
+
+    /** Leaving the entry tab removes the screen from composition. The unsent text must come back unchanged. */
+    @Test
+    fun unsentTextSurvivesLeavingTheEntryTab() {
+        val db = AppDatabase.inMemory(context)
+        try {
+            val chart = ChartOfAccounts.standard()
+            val vm = EntryViewModel(
+                context = context,
+                ledger = LedgerRepository(db, chart),
+                chart = chart,
+                parties = PartyRepository(db),
+                seeder = ChartSeeder(db, chart),
+                configStore = ConfigStore(context),
+                parserProvider = FixedProvider(StubParser(sodaResult())),
+                clock = clock,
+            )
+            val onEntryTab = mutableStateOf(true)
+            compose.setContent {
+                AccountingTheme {
+                    if (onEntryTab.value) {
+                        val input by vm.input.collectAsState()
+                        EntryScreen(
+                            state = EntryUiState(),
+                            onAction = vm::onAction,
+                            input = input,
+                            onInputChange = vm::onInputChange,
+                        )
+                    }
+                }
+            }
+
+            compose.onNode(hasSetTextAction()).performTextInput(SODA_TEXT)
+            compose.runOnIdle { onEntryTab.value = false }
+            compose.runOnIdle { onEntryTab.value = true }
+            compose.onNode(hasSetTextAction()).assertTextEquals(SODA_TEXT)
+        } finally {
+            db.close()
+        }
     }
 
     @Test
@@ -216,7 +267,14 @@ class EntryScreenTest {
             compose.setContent {
                 AccountingTheme {
                     val state by vm.state.collectAsState()
-                    EntryScreen(state = state, onAction = vm::onAction, accountName = vm::accountName)
+                    val input by vm.input.collectAsState()
+                    EntryScreen(
+                        state = state,
+                        onAction = vm::onAction,
+                        accountName = vm::accountName,
+                        input = input,
+                        onInputChange = vm::onInputChange,
+                    )
                 }
             }
 

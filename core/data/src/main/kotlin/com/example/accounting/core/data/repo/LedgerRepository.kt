@@ -57,6 +57,14 @@ data class TrialBalance(val rows: List<TrialRow>, val debitTotal: Long, val cred
 /** A document with the document it reverses ([reversalOf]) and the one that reverses it ([reversedBy]). */
 data class DocumentLinks(val doc: CommittedDoc, val reversalOf: CommittedDoc?, val reversedBy: CommittedDoc?)
 
+/** A reversal ([reversalId], [reversalNumber]) and the original it reverses ([originalId], [originalNumber]). */
+data class ReversalLink(
+    val originalId: String,
+    val originalNumber: Int,
+    val reversalId: String,
+    val reversalNumber: Int,
+)
+
 /**
  * Persistence for journal documents. Fiscal year is the Jalali year of the entry date.
  * Committed rows are never updated or deleted; fixes go through [reverse].
@@ -137,6 +145,14 @@ class LedgerRepository(
 
     /** Fiscal years that exist (opened), ascending. */
     fun fiscalYears(): Flow<List<Int>> = db.fiscalYearDao().observeAll().map { rows -> rows.map { it.jalaliYear } }
+
+    /**
+     * All reversal links, unfiltered by date or fiscal year, so a list window never hides the other half of a pair.
+     * Re-emits on any journal change.
+     */
+    fun reversalLinks(): Flow<List<ReversalLink>> = db.journalDao().observeReversalLinks().map { rows ->
+        rows.map { ReversalLink(it.originalId, it.originalNumber, it.reversalId, it.reversalNumber) }
+    }
 
     /** One committed document with its reversal links. Null when [docId] does not exist. */
     suspend fun document(docId: String): DocumentLinks? {

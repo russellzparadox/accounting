@@ -58,6 +58,32 @@ class EntryViewModel @Inject constructor(
     private val mutableState = MutableStateFlow(EntryUiState())
     val state: StateFlow<EntryUiState> = mutableState.asStateFlow()
 
+    private val inputText = MutableStateFlow("")
+
+    /**
+     * Unsent text in the entry field. Held here, not in the composable, so it survives leaving the tab
+     * (this ViewModel is Activity-scoped and the tab's route leaves composition).
+     */
+    val input: StateFlow<String> = inputText.asStateFlow()
+
+    /** Seq of the last voice transcript applied to [input]. */
+    private var lastVoiceSeq = 0
+
+    fun onInputChange(text: String) {
+        inputText.value = text
+    }
+
+    /**
+     * Voice partial and final text fills [input]. Applies only a transcript with a higher seq than the last one, so
+     * the same transcript delivered again (the voice state is still set when the entry tab is re-entered) is ignored
+     * and does not overwrite text the user has typed since.
+     */
+    fun onVoiceTranscript(transcript: VoiceTranscript) {
+        if (transcript.seq <= lastVoiceSeq) return
+        lastVoiceSeq = transcript.seq
+        inputText.value = transcript.text
+    }
+
     private val claimLock = Mutex()
     private val setupLock = Mutex()
     private var seeded = false

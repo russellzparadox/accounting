@@ -138,6 +138,35 @@ class LedgerViewModelTest {
     }
 
     @Test
+    fun reversalLinkAndBadgeHoldWhenTheOtherDocumentIsOutsideTheDateRange() {
+        // Original in Azar 1404 (2025-12-05). Reversal dated today, in Dey 1404 (2026-01-10).
+        commit(sale("a", LocalDate.of(2025, 12, 5), 1_000_000L, "فروش آذر"))
+        val vm = LedgerViewModel(ledger, clock)
+        awaitValue({ vm.journal.value }) { it.size == 1 }
+
+        vm.openDocument("a")
+        awaitValue({ vm.detail.value }) { it != null }
+        vm.confirmReverse()
+        awaitValue({ vm.detail.value }) { it?.reversedNumber != null }
+
+        // Dey only: the original is outside the window, the reversal is inside it.
+        vm.selectPreset(DatePreset.THIS_MONTH)
+        val reversalOnly = awaitValue({ vm.journal.value }) { rows -> rows.singleOrNull()?.isReversal == true }
+        assertEquals(1, reversalOnly.single().reversalOfNumber)
+
+        // Azar only: the original is inside the window, the reversal is outside it. The badge still shows.
+        vm.selectPreset(DatePreset.PREVIOUS_MONTH)
+        val originalOnly = awaitValue({ vm.journal.value }) { rows -> rows.singleOrNull()?.id == "a" }
+        assertTrue(originalOnly.single().isReversed)
+
+        // The sheet for the original, opened from that window, offers no second reversal.
+        vm.closeDocument()
+        vm.openDocument("a")
+        val sheet = awaitValue({ vm.detail.value }) { it != null }!!
+        assertFalse(sheet.canReverse)
+    }
+
+    @Test
     fun accountLedgerRunsBalanceAndTotalsMatchTheNet() {
         commit(sale("a", LocalDate.of(2026, 1, 5), 1_000_000L, "فروش"))
         commit(sale("b", LocalDate.of(2026, 1, 8), 300_000L, "فروش دوم"))

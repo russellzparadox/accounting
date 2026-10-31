@@ -97,6 +97,27 @@ class EntryViewModelTest {
         ),
     )
 
+    /**
+     * Unsent text lives in the ViewModel, which outlives the entry tab. Voice text fills it once per transcript seq:
+     * a re-delivered transcript (same seq, as on tab re-entry) must not overwrite what the user typed after it.
+     */
+    @Test
+    fun unsentInputAndVoiceTextAreKeptInTheViewModel() {
+        val vm = viewModel()
+        vm.onInputChange("نوشابه")
+        assertEquals("نوشابه", vm.input.value)
+
+        vm.onVoiceTranscript(VoiceTranscript("نوشابه ۵۰۰٬۰۰۰", 1))
+        assertEquals("نوشابه ۵۰۰٬۰۰۰", vm.input.value)
+
+        vm.onInputChange("نوشابه ۵۰۰٬۰۰۰ تومان")
+        vm.onVoiceTranscript(VoiceTranscript("نوشابه ۵۰۰٬۰۰۰", 1))
+        assertEquals("نوشابه ۵۰۰٬۰۰۰ تومان", vm.input.value)
+
+        vm.onVoiceTranscript(VoiceTranscript("نوشابه ۵۰۰٬۰۰۰ تومان خریدم", 2))
+        assertEquals("نوشابه ۵۰۰٬۰۰۰ تومان خریدم", vm.input.value)
+    }
+
     @Test
     fun sodaExampleConfirmsIntoBalancedLedger() = runBlocking {
         configure()

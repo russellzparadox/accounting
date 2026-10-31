@@ -1,6 +1,7 @@
 package com.example.accounting.feature.ledger
 
 import com.example.accounting.core.data.repo.CommittedDoc
+import com.example.accounting.core.data.repo.ReversalLink
 import com.example.accounting.core.domain.Account
 import com.example.accounting.core.domain.AccountLevel
 import com.example.accounting.core.domain.AccountType
@@ -76,13 +77,33 @@ class LedgerSearchTest {
         val a = doc("a", 1, LocalDate.of(2026, 1, 5), "فروش", 1_000_000L)
         val b = doc("b", 2, LocalDate.of(2026, 1, 8), "فروش دوم", 300_000L)
         val r = doc("r", 3, LocalDate.of(2026, 1, 9), "اصلاح", 1_000_000L, reversalOf = "a")
-        val rows = buildJournalRows(listOf(a, b, r), "") { it }
+        val links = listOf(ReversalLink(originalId = "a", originalNumber = 1, reversalId = "r", reversalNumber = 3))
+        val rows = buildJournalRows(listOf(a, b, r), "", links) { it }
         assertEquals(listOf("r", "b", "a"), rows.map { it.id })
         val reversal = rows.first { it.id == "r" }
         assertTrue(reversal.isReversal)
         assertEquals(1, reversal.reversalOfNumber)
         assertTrue(rows.first { it.id == "a" }.isReversed)
         assertFalse(rows.first { it.id == "b" }.isReversed)
+    }
+
+    @Test
+    fun reversalLinkHoldsWhenTheOriginalIsOutsideTheListedDocs() {
+        val r = doc("r", 3, LocalDate.of(2026, 1, 9), "اصلاح", 1_000_000L, reversalOf = "a")
+        val links = listOf(ReversalLink(originalId = "a", originalNumber = 1, reversalId = "r", reversalNumber = 3))
+        val reversal = buildJournalRows(listOf(r), "", links) { it }.single()
+        assertEquals(1, reversal.reversalOfNumber)
+        assertTrue(reversal.isReversal)
+        assertFalse(reversal.isReversed)
+    }
+
+    @Test
+    fun originalOutsideTheListedDocsShowsReversedBadge() {
+        val a = doc("a", 1, LocalDate.of(2025, 12, 5), "فروش", 1_000_000L)
+        val links = listOf(ReversalLink(originalId = "a", originalNumber = 1, reversalId = "r", reversalNumber = 3))
+        val original = buildJournalRows(listOf(a), "", links) { it }.single()
+        assertTrue(original.isReversed)
+        assertEquals(null, original.reversalOfNumber)
     }
 
     private fun account(code: String, name: String, level: AccountLevel, parent: String?) = Account(

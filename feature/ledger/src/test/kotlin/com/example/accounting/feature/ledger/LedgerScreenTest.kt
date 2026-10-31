@@ -1,16 +1,20 @@
 package com.example.accounting.feature.ledger
 
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import com.example.accounting.core.data.repo.CommittedDoc
 import com.example.accounting.core.data.repo.DocumentLinks
+import com.example.accounting.core.domain.AccountLevel
 import com.example.accounting.core.domain.JournalEntry
 import com.example.accounting.core.domain.JournalLine
 import com.example.accounting.core.domain.Money
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.domain.TemplateId
+import com.example.accounting.core.persian.PersianDigits
 import com.example.accounting.core.ui.theme.AccountingTheme
 import java.time.LocalDate
 import org.junit.Assert.assertTrue
@@ -51,7 +55,11 @@ class LedgerScreenTest {
         ),
     )
 
-    /** Edit and delete never appear anywhere on these screens. Checked as substrings of every text node. */
+    /**
+     * Edit and delete never appear on these screens. Checked as substrings of every text node.
+     * Scope is committed documents only: the «ویرایش مبلغ» action on an UNCONFIRMED entry draft card
+     * (feature:entry ConfirmationCard) is allowed, lives in another module, and is not checked here.
+     */
     private fun assertNoEditOrDeleteAction() {
         listOf("ویرایش", "حذف").forEach { word ->
             assertTrue(
@@ -100,6 +108,108 @@ class LedgerScreenTest {
         compose.onNodeWithText(str(R.string.doc_is_reversal_of, "۱")).assertExists()
         compose.onNodeWithText(str(R.string.doc_cannot_reverse_reversal)).assertExists()
         assertNoEditOrDeleteAction()
+    }
+
+    /** Committed-data scope: account picker (tree view) has no edit or delete on accounts or balances. */
+    @Test
+    fun committedAccountPickerHasNoEditOrDelete() {
+        val rows = listOf(
+            AccountRow(
+                code = "1100",
+                nameFa = "صندوق",
+                level = AccountLevel.DETAIL,
+                depth = 0,
+                netRial = 1_000_000L,
+            ),
+        )
+        compose.setContent {
+            AccountingTheme {
+                AccountPicker(
+                    years = listOf(1404),
+                    selectedYear = 1404,
+                    onYear = {},
+                    rows = rows,
+                    query = "",
+                    onQuery = {},
+                    hideZero = false,
+                    onHideZero = {},
+                    onPick = {},
+                )
+            }
+        }
+        // Positive control: the screen rendered, so the absence checks below are not vacuous.
+        assertTrue(compose.onAllNodesWithText("صندوق", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertNoEditOrDeleteAction()
+    }
+
+    /** Committed-data scope: account ledger lists committed lines only, with no edit or delete on them. */
+    @Test
+    fun committedAccountLedgerHasNoEditOrDelete() {
+        val ui = AccountLedgerUi(
+            code = "1100",
+            name = "صندوق",
+            rows = listOf(
+                LedgerRowUi(
+                    entryId = "a",
+                    date = LocalDate.of(2026, 1, 5),
+                    docNumber = 1,
+                    memo = "فروش",
+                    debit = 1_000_000L,
+                    credit = 0L,
+                    balance = 1_000_000L,
+                ),
+            ),
+            totalDebit = 1_000_000L,
+            totalCredit = 0L,
+            closing = 1_000_000L,
+        )
+        compose.setContent {
+            AccountingTheme {
+                AccountLedgerScreen(
+                    ui = ui,
+                    years = listOf(1404),
+                    filter = LedgerFilter(year = 1404),
+                    onYear = {},
+                    onPreset = {},
+                    onFromChange = {},
+                    onToChange = {},
+                    onBack = {},
+                    onOpen = {},
+                )
+            }
+        }
+        assertTrue(compose.onAllNodesWithText("فروش", substring = true).fetchSemanticsNodes().isNotEmpty())
+        assertNoEditOrDeleteAction()
+    }
+
+    /** Touch target: every filter chip is at least 48dp tall (DESIGN 5.7). */
+    @Test
+    fun dateFilterChipsAreAtLeast48dpTall() {
+        compose.setContent {
+            AccountingTheme {
+                DateFilterBar(
+                    preset = DatePreset.ALL,
+                    fromText = "",
+                    toText = "",
+                    dateError = false,
+                    onPreset = {},
+                    onFromChange = {},
+                    onToChange = {},
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.range_this_month)).assertHeightIsAtLeast(48.dp)
+    }
+
+    /** Touch target: fiscal year chips are at least 48dp tall (DESIGN 5.7). */
+    @Test
+    fun fiscalYearChipsAreAtLeast48dpTall() {
+        compose.setContent {
+            AccountingTheme {
+                FiscalYearChips(years = listOf(1404), selected = 1404, onSelect = {})
+            }
+        }
+        compose.onNodeWithText(PersianDigits.toPersian("1404")).assertHeightIsAtLeast(48.dp)
     }
 
     @Test

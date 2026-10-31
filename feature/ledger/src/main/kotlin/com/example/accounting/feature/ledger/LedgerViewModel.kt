@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.accounting.core.data.repo.CommittedDoc
 import com.example.accounting.core.data.repo.LedgerLine
 import com.example.accounting.core.data.repo.LedgerRepository
+import com.example.accounting.core.data.repo.ReversalLink
 import com.example.accounting.core.domain.Account
 import com.example.accounting.core.persian.JalaliDate
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -88,9 +89,14 @@ class LedgerViewModel @Inject constructor(
         .flatMapLatest { (year, range) -> ledger.journal(year, range.from, range.to) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Every reversal link in the ledger, unfiltered, so a link shows even when its other half is outside the range. */
+    private val reversalLinks: StateFlow<List<ReversalLink>> = ledger.reversalLinks()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     /** Journal list, newest first, filtered by the search query. */
-    val journal: StateFlow<List<JournalRow>> = combine(journalDocs, _journalQuery, accountNames) { docs, query, names ->
-        buildJournalRows(docs, query) { code -> names[code] ?: code }
+    val journal: StateFlow<List<JournalRow>> = combine(journalDocs, _journalQuery, accountNames, reversalLinks) {
+            docs, query, names, links ->
+        buildJournalRows(docs, query, links) { code -> names[code] ?: code }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Net (debit minus credit) per account for the selected fiscal year. Reloads on [refresh]. */

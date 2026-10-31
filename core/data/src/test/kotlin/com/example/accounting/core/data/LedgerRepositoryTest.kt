@@ -159,6 +159,24 @@ class LedgerRepositoryTest {
     }
 
     @Test
+    fun reversalLinksAreNotLimitedByTheJournalWindow() = runBlocking {
+        val first = cashSale(oct1, 1000)
+        repo.commit(first)
+        val reversal = repo.reverse(first.id, oct1.plusDays(30))
+
+        // The window excludes the original, so the journal list cannot see it.
+        val windowed = repo.journal(1405, from = oct1.plusDays(29)).first()
+        assertEquals(listOf(reversal.docNumber), windowed.map { it.docNumber })
+
+        // The link query has no window and still pairs them.
+        val link = repo.reversalLinks().first().single()
+        assertEquals(first.id, link.originalId)
+        assertEquals(1, link.originalNumber)
+        assertEquals(reversal.id, link.reversalId)
+        assertEquals(reversal.docNumber, link.reversalNumber)
+    }
+
+    @Test
     fun journalEmitsEntriesWithLines() = runBlocking {
         repo.commit(cashSale(oct1, 1000))
         repo.commit(cashSale(oct1.plusDays(1), 700))

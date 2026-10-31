@@ -1,6 +1,7 @@
 package com.example.accounting.feature.ledger
 
 import com.example.accounting.core.data.repo.CommittedDoc
+import com.example.accounting.core.data.repo.ReversalLink
 import com.example.accounting.core.domain.Account
 import com.example.accounting.core.domain.AccountLevel
 import com.example.accounting.core.domain.partyKey
@@ -71,16 +72,18 @@ object LedgerSearch {
 
 /**
  * Journal rows: newest first (date, then document number), filtered by [query].
- * A reversal shows the number of the document it reverses. An original shows [JournalRow.isReversed] when a
- * reversal exists in [docs]. Cross fiscal-year links are not visible here (documented limit).
+ * [links] must be the unfiltered ledger links ([LedgerRepository.reversalLinks]), not derived from [docs]: the
+ * other half of a pair can sit outside the date range or fiscal year being shown. A reversal shows the number of
+ * the document it reverses; an original shows [JournalRow.isReversed] when any reversal links to it.
  */
 fun buildJournalRows(
     docs: List<CommittedDoc>,
     query: String,
+    links: List<ReversalLink>,
     accountName: (String) -> String,
 ): List<JournalRow> {
-    val numberById = docs.associate { it.id to it.docNumber }
-    val reversedIds = docs.mapNotNullTo(HashSet()) { it.entry.reversalOfId }
+    val originalNumberByReversalId = links.associate { it.reversalId to it.originalNumber }
+    val reversedIds = links.mapTo(HashSet()) { it.originalId }
     return docs
         .filter { LedgerSearch.matchesDoc(it, query, accountName) }
         .sortedWith(compareByDescending<CommittedDoc> { it.entry.date }.thenByDescending { it.docNumber })
@@ -92,7 +95,7 @@ fun buildJournalRows(
                 docNumber = doc.docNumber,
                 memo = doc.entry.memo,
                 totalRial = doc.entry.debitTotal.rial,
-                reversalOfNumber = originalId?.let { numberById[it] },
+                reversalOfNumber = if (originalId != null) originalNumberByReversalId[doc.id] else null,
                 isReversal = originalId != null,
                 isReversed = doc.id in reversedIds,
             )

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +43,8 @@ internal fun FiscalYearChips(
         ) {
             shown.forEach { year ->
                 FilterChip(
+                    // 48dp minimum touch height (DESIGN 5.7), the chip itself is 32dp.
+                    modifier = Modifier.heightIn(min = 48.dp),
                     selected = year == selected,
                     onClick = { onSelect(year) },
                     label = { Text(persianNumber(year)) },

@@ -32,8 +32,8 @@ enum class MainTab(val labelRes: Int, val icon: ImageVector) {
 
 /**
  * Root navigation: three tabs in a bottom bar (state-hoisted, no nav library).
- * Tabs are not kept in composition; the entry state lives in EntryViewModel (Activity scope), so the draft and
- * chat survive a tab switch. Back from another tab returns to «ثبت».
+ * Tabs are not kept in composition. EntryViewModel (Activity scope) holds the chat, the draft cards and the unsent
+ * input text, so they survive a tab switch. Back from another tab returns to «ثبت».
  */
 @Composable
 fun AppShell() {
