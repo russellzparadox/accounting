@@ -71,7 +71,7 @@
     <string name="manual_date_label">تاریخ سند (شمسی)</string>
     <string name="manual_date_hint">مثلاً ۱۴۰۴/۱۰/۲۰</string>
     <string name="manual_date_invalid">تاریخ را به شکل سال/ماه/روز بنویسید، مثلاً ۱۴۰۴/۱۰/۲۰.</string>
-    <string name="manual_year_closed">سال مالی %1$s باز نیست. این تاریخ ثبت نمی‌توان شد.</string>
+    <string name="manual_year_opens">سال مالی %1$s هنوز باز نشده است. با ثبت این سند، باز می‌شود.</string>
     <string name="manual_memo_label">شرح سند</string>
     <string name="manual_line_title">سطر %1$s</string>
     <string name="manual_remove_line_cd">حذف سطر</string>

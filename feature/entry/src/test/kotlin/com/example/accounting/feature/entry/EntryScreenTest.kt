@@ -1,6 +1,7 @@
 package com.example.accounting.feature.entry
 
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +20,8 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -47,6 +50,7 @@ import com.example.accounting.core.domain.pipeline.ParserResult
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.persian.MoneyFormat
+import com.example.accounting.core.ui.money.LocalAmountUnit
 import com.example.accounting.core.ui.theme.AccountingTheme
 import java.time.Clock
 import java.time.Instant
@@ -198,21 +202,76 @@ class EntryScreenTest {
         }
     }
 
+    /** Flipping the setting changes the draft card's amounts: same entry, rial text instead of toman. */
     @Test
     fun draftShowsTotalsInRialWhenSettingIsRial() {
         val card = testDraft()
         val rialText = MoneyFormat.format(SODA_RIAL, AmountUnit.RIAL)
         compose.setContent {
             AccountingTheme {
-                EntryScreen(
-                    state = EntryUiState(items = listOf(card)),
-                    onAction = {},
-                    amountUnit = AmountUnit.RIAL,
-                )
+                CompositionLocalProvider(LocalAmountUnit provides AmountUnit.RIAL) {
+                    EntryScreen(state = EntryUiState(items = listOf(card)), onAction = {})
+                }
             }
         }
         compose.onNodeWithText(str(R.string.confirm_debit_total, rialText)).assertIsDisplayed()
         compose.onNodeWithText(str(R.string.confirm_credit_total, rialText)).assertIsDisplayed()
+    }
+
+    /** Quick manual sheet: 500 typed in rial mode posts 500 rial. */
+    @Test
+    fun manualFormPostsTypedAmountAsRialInRialMode() {
+        assertManualAmount(AmountUnit.RIAL, expectedRial = 500L)
+    }
+
+    /** Quick manual sheet: 500 typed in toman mode posts 5000 rial. */
+    @Test
+    fun manualFormPostsTypedAmountAsTomanInTomanMode() {
+        assertManualAmount(AmountUnit.TOMAN, expectedRial = 5_000L)
+    }
+
+    private fun assertManualAmount(unit: AmountUnit, expectedRial: Long) {
+        val actions = mutableListOf<EntryAction>()
+        compose.setContent {
+            AccountingTheme {
+                CompositionLocalProvider(LocalAmountUnit provides unit) {
+                    ManualEntryForm(onDismiss = {}, onSubmit = { actions += it })
+                }
+            }
+        }
+        val label = if (unit == AmountUnit.RIAL) R.string.amount_field_label_rial else R.string.amount_field_label
+        compose.onNodeWithText(str(label)).assertIsDisplayed()
+        compose.onAllNodes(hasSetTextAction()).onFirst().performTextInput("500")
+        compose.onNodeWithText(str(R.string.manual_submit)).performScrollTo().performClick()
+        val submitted = actions.single() as EntryAction.SubmitManual
+        assertEquals(expectedRial, submitted.amountRial)
+        assertEquals(TemplateId.PURCHASE_CASH, submitted.templateId)
+    }
+
+    /** NOT_CONFIGURED offers the server settings action (no dialog); the screen hands it to the Settings callback. */
+    @Test
+    fun notConfiguredErrorOpensBackendSettingsInsteadOfADialog() {
+        val error = ChatItem.Error(
+            id = "err-nc",
+            kind = EntryErrorKind.NOT_CONFIGURED,
+            title = str(R.string.error_not_configured_title),
+            message = str(R.string.error_not_configured_body),
+            retryText = null,
+        )
+        val actions = mutableListOf<EntryAction>()
+        var opened = 0
+        compose.setContent {
+            AccountingTheme {
+                EntryScreen(
+                    state = EntryUiState(items = listOf(error)),
+                    onAction = { actions += it },
+                    onOpenBackendSettings = { opened++ },
+                )
+            }
+        }
+        compose.onNodeWithText(str(R.string.action_configure_server)).performClick()
+        assertEquals(1, opened)
+        assertTrue(actions.isEmpty())
     }
 
     @Test

@@ -40,8 +40,9 @@ import com.example.accounting.core.domain.pipeline.ConfirmReason
 import com.example.accounting.core.persian.AmountInput
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
-import com.example.accounting.core.persian.MoneyFormat
 import com.example.accounting.core.persian.PersianDigits
+import com.example.accounting.core.ui.money.LocalAmountUnit
+import com.example.accounting.core.ui.money.amountText
 import com.example.accounting.core.ui.theme.AccountingTypography
 import com.example.accounting.core.domain.JournalEntry
 
@@ -55,13 +56,12 @@ fun ConfirmationCard(
     onAction: (EntryAction) -> Unit,
     accountName: (String) -> String,
     onEditAsDocument: (JournalEntry) -> Unit = {},
-    amountUnit: AmountUnit = AmountUnit.TOMAN,
     modifier: Modifier = Modifier,
 ) {
     var editing by rememberSaveable(card.id) { mutableStateOf(false) }
     val entry = card.entry
-    val debit = MoneyFormat.format(entry.debitTotal.rial, amountUnit)
-    val credit = MoneyFormat.format(entry.creditTotal.rial, amountUnit)
+    val debit = amountText(entry.debitTotal.rial)
+    val credit = amountText(entry.creditTotal.rial)
     val debitTotalText = stringResource(R.string.confirm_debit_total, debit)
     val creditTotalText = stringResource(R.string.confirm_credit_total, credit)
     val hasMismatch = card.reasons.any { it is ConfirmReason.AmountMismatch }
@@ -110,7 +110,7 @@ fun ConfirmationCard(
 
         HorizontalDivider()
         entry.lines.forEach { line ->
-            LineRow(line = line, name = accountName(line.accountCode), unit = amountUnit)
+            LineRow(line = line, name = accountName(line.accountCode))
         }
         HorizontalDivider()
         Text(
@@ -181,7 +181,6 @@ fun ConfirmationCard(
     if (editing) {
         EditAmountDialog(
             initialRial = entry.debitTotal.rial,
-            unit = amountUnit,
             onDismiss = { editing = false },
             onSave = { rial ->
                 editing = false
@@ -192,9 +191,9 @@ fun ConfirmationCard(
 }
 
 @Composable
-private fun LineRow(line: JournalLine, name: String, unit: AmountUnit) {
+private fun LineRow(line: JournalLine, name: String) {
     val sideText = stringResource(if (line.side == Side.DEBIT) R.string.side_debit else R.string.side_credit)
-    val amount = MoneyFormat.format(line.amount.rial, unit)
+    val amount = amountText(line.amount.rial)
     val description = stringResource(R.string.amount_cd, amount, sideText)
     Row(
         modifier = Modifier
@@ -225,7 +224,8 @@ private fun LineRow(line: JournalLine, name: String, unit: AmountUnit) {
 }
 
 @Composable
-private fun EditAmountDialog(initialRial: Long, unit: AmountUnit, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
+private fun EditAmountDialog(initialRial: Long, onDismiss: () -> Unit, onSave: (Long) -> Unit) {
+    val unit = LocalAmountUnit.current
     // Prefill only when the value can be typed exactly in this unit. Otherwise the field starts empty (never truncated).
     var text by rememberSaveable {
         mutableStateOf(AmountInput.toInputText(initialRial, unit)?.let { PersianDigits.toPersian(it) }.orEmpty())

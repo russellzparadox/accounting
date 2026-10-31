@@ -75,19 +75,13 @@ class LedgerRepository(
     private val idGenerator: () -> String = { UUID.randomUUID().toString() },
 ) {
     /** Creates the fiscal year (and its doc-number counter) if missing. Idempotent. */
-    suspend fun ensureFiscalYear(jalaliYear: Int): FiscalYear = db.withTransaction {
-        val (start, end) = JalaliDate.fiscalYear(jalaliYear)
-        db.fiscalYearDao().insertIgnore(FiscalYearEntity(jalaliYear, start.toString(), end.toString()))
-        db.docSequenceDao().insertIgnore(DocSequenceEntity(jalaliYear, 0))
-        val row = checkNotNull(db.fiscalYearDao().find(jalaliYear))
-        FiscalYear(LocalDate.parse(row.startDate), LocalDate.parse(row.endDate))
-    }
+    suspend fun ensureFiscalYear(jalaliYear: Int): FiscalYear = db.withTransaction { ensureFiscalYearInTx(jalaliYear) }
 
     /**
-     * Persists a balanced entry under the next doc number of its fiscal year.
-     * Allocation and inserts share one transaction, so a failed commit leaves no gap.
-     * Throws [DomainException] for an unopened fiscal year, a date outside it, a missing or already-reversed
-     * reversal target, or a non-postable account.
+     * Persists a balanced entry under the next doc number of its fiscal year (the Jalali year of its date).
+     * A fiscal year that is not open yet is opened here, in the same transaction, so the first document of that year
+     * gets number 1. Allocation and inserts share one transaction, so a failed commit leaves no gap.
+     * Throws [DomainException] for a missing or already-reversed reversal target, or a non-postable account.
      */
     suspend fun commit(entry: JournalEntry): CommittedDoc = db.withTransaction { commitInTx(entry) }
 
@@ -209,12 +203,19 @@ class LedgerRepository(
         return CommittedDoc(entry.id, year, docNumber, entry)
     }
 
+    /** Opens fiscal year [year] if needed (lazily, inside the caller's transaction), then checks [date] is inside it. */
     private suspend fun openFiscalYear(year: Int, date: LocalDate): FiscalYear {
-        val row = db.fiscalYearDao().find(year)
-            ?: throw DomainException("fiscal year $year is not open (date $date)")
-        val fiscal = FiscalYear(LocalDate.parse(row.startDate), LocalDate.parse(row.endDate))
+        val fiscal = ensureFiscalYearInTx(year)
         if (date !in fiscal) throw DomainException("date $date outside fiscal year $year")
         return fiscal
+    }
+
+    private suspend fun ensureFiscalYearInTx(jalaliYear: Int): FiscalYear {
+        val (start, end) = JalaliDate.fiscalYear(jalaliYear)
+        db.fiscalYearDao().insertIgnore(FiscalYearEntity(jalaliYear, start.toString(), end.toString()))
+        db.docSequenceDao().insertIgnore(DocSequenceEntity(jalaliYear, 0))
+        val row = checkNotNull(db.fiscalYearDao().find(jalaliYear))
+        return FiscalYear(LocalDate.parse(row.startDate), LocalDate.parse(row.endDate))
     }
 
     private suspend fun loadEntry(id: String): JournalEntry? {

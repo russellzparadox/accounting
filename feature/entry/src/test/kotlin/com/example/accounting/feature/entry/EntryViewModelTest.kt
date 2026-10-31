@@ -83,12 +83,16 @@ class EntryViewModelTest {
 
     private fun configure() = configStore.save(BackendConfig("https://backend.test", "test-token"))
 
-    private fun sodaIntent(rial: Long = SODA_RIAL, confidence: Int = 92) = ParserResult.Intent(
+    private fun sodaIntent(
+        rial: Long = SODA_RIAL,
+        confidence: Int = 92,
+        date: LocalDate = LocalDate.of(2026, 1, 10),
+    ) = ParserResult.Intent(
         ParsedIntent(
             intent = TransactionIntent(
                 type = TemplateId.PURCHASE_CASH,
                 amountRial = rial,
-                date = LocalDate.of(2026, 1, 10),
+                date = date,
                 paidWith = PaidWith.CASH,
                 memo = "نوشابه",
                 confidence = confidence,
@@ -138,6 +142,39 @@ class EntryViewModelTest {
         assertEquals(SODA_RIAL, trial.debitTotal)
         assertEquals(trial.debitTotal, trial.creditTotal)
         assertEquals(1, ledger.journal(jalaliYear).first().size)
+    }
+
+    /**
+     * Today is in Jalali 1405, the entry is dated in 1404 (not open yet). It commits with number 1 of 1404 and the
+     * 1405 counter is untouched. No fiscal-year error.
+     */
+    @Test
+    fun entryDatedInThePreviousJalaliYearCommitsAsFirstDocumentOfThatYear() = runBlocking {
+        configure()
+        val lateClock = Clock.fixed(Instant.parse("2026-10-31T08:00:00Z"), ZoneId.of("Asia/Tehran"))
+        val previousYearDate = LocalDate.of(2026, 3, 1) // 1404/12/10
+        val vm = EntryViewModel(
+            context = context,
+            ledger = ledger,
+            chart = chart,
+            parties = parties,
+            seeder = ChartSeeder(db, chart),
+            configStore = configStore,
+            parserProvider = FixedProvider(ScriptedParser(sodaIntent(date = previousYearDate))),
+            clock = lateClock,
+            settings = SettingsRepository(context),
+        )
+
+        vm.handle(EntryAction.Submit(SODA_TEXT))
+        val card = vm.state.value.items.filterIsInstance<ChatItem.DraftCard>().single()
+        assertEquals(previousYearDate, card.entry.date)
+
+        vm.handle(EntryAction.Confirm(card.id))
+        val committed = vm.state.value.items.filterIsInstance<ChatItem.Committed>().single()
+        assertEquals(1404, committed.doc.fiscalYear)
+        assertEquals(1, committed.doc.docNumber)
+        assertEquals(1, ledger.journal(1404).first().size)
+        assertEquals(0, ledger.journal(1405).first().size)
     }
 
     @Test

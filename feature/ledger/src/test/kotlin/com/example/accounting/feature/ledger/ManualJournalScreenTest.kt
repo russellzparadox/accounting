@@ -15,6 +15,8 @@ import com.example.accounting.core.domain.ManualCheck
 import com.example.accounting.core.domain.ManualIssue
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.persian.AmountUnit
+import com.example.accounting.core.ui.money.LocalAmountUnit
+import androidx.compose.runtime.CompositionLocalProvider
 import com.example.accounting.core.persian.MoneyFormat
 import com.example.accounting.core.ui.theme.AccountingTheme
 import org.junit.Assert.assertEquals
@@ -51,7 +53,7 @@ class ManualJournalScreenTest {
         dateText = "۱۴۰۴/۱۰/۲۰",
         dateValid = true,
         dateYear = 1404,
-        dateYearOpen = true,
+        dateYearOpened = true,
         memo = "",
         rows = listOf(
             row(1, "1100", "صندوق", Side.DEBIT, "۵۰۰۰۰۰", valid = true),
@@ -71,7 +73,9 @@ class ManualJournalScreenTest {
     fun rialUnitShowsTotalsInRial() {
         val check = ManualCheck(emptySet(), debitRial = 5_000_000L, creditRial = 5_000_000L)
         compose.setContent {
-            ManualJournalScreen(ui = ui(check).copy(unit = AmountUnit.RIAL), onAction = {}, onClose = {})
+            CompositionLocalProvider(LocalAmountUnit provides AmountUnit.RIAL) {
+                ManualJournalScreen(ui = ui(check), onAction = {}, onClose = {})
+            }
         }
         compose.onNodeWithText(str(R.string.manual_total_debit, MoneyFormat.format(5_000_000L, AmountUnit.RIAL)))
             .assertIsDisplayed()

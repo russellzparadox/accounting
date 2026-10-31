@@ -49,8 +49,9 @@ import com.example.accounting.core.domain.PartyKind
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
-import com.example.accounting.core.persian.MoneyFormat
 import com.example.accounting.core.ui.components.JalaliDatePickerDialog
+import com.example.accounting.core.ui.money.LocalAmountUnit
+import com.example.accounting.core.ui.money.amountText
 import java.time.LocalDate
 import kotlin.math.abs
 
@@ -121,7 +122,7 @@ private fun ManualForm(
         item(key = "date") {
             val message = when {
                 !ui.dateValid -> stringResource(R.string.manual_date_invalid)
-                !ui.dateYearOpen -> stringResource(R.string.manual_year_closed, persianNumber(ui.dateYear ?: 0))
+                !ui.dateYearOpened -> stringResource(R.string.manual_year_opens, persianNumber(ui.dateYear ?: 0))
                 else -> stringResource(R.string.manual_date_hint)
             }
             var showDatePicker by rememberSaveable { mutableStateOf(false) }
@@ -132,7 +133,7 @@ private fun ManualForm(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text(stringResource(R.string.manual_date_label)) },
                     singleLine = true,
-                    isError = !ui.dateValid || !ui.dateYearOpen,
+                    isError = !ui.dateValid,
                     supportingText = { Text(message) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
@@ -164,7 +165,7 @@ private fun ManualForm(
             )
         }
         itemsIndexed(items = ui.rows, key = { _, row -> row.id }) { index, row ->
-            ManualLineRow(index = index, row = row, unit = ui.unit, onAction = onAction)
+            ManualLineRow(index = index, row = row, onAction = onAction)
         }
         item(key = "add") {
             OutlinedButton(
@@ -178,12 +179,12 @@ private fun ManualForm(
             val balanced = ManualIssue.UNBALANCED !in ui.check.issues
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.manual_total_debit, moneyText(ui.check.debitRial, ui.unit)),
+                    text = stringResource(R.string.manual_total_debit, amountText(ui.check.debitRial)),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = stringResource(R.string.manual_total_credit, moneyText(ui.check.creditRial, ui.unit)),
+                    text = stringResource(R.string.manual_total_credit, amountText(ui.check.creditRial)),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -191,7 +192,7 @@ private fun ManualForm(
                     text = if (balanced) {
                         stringResource(R.string.manual_balanced)
                     } else {
-                        stringResource(R.string.manual_difference, moneyText(abs(ui.check.differenceRial), ui.unit))
+                        stringResource(R.string.manual_difference, amountText(abs(ui.check.differenceRial)))
                     },
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -242,7 +243,8 @@ private fun ManualForm(
 }
 
 @Composable
-private fun ManualLineRow(index: Int, row: ManualRowUi, unit: AmountUnit, onAction: (ManualAction) -> Unit) {
+private fun ManualLineRow(index: Int, row: ManualRowUi, onAction: (ManualAction) -> Unit) {
+    val unit = LocalAmountUnit.current
     val amountProblem = row.amountText.isNotBlank() && !row.amountValid
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -433,5 +435,3 @@ private fun issueText(issue: ManualIssue): Int = when (issue) {
     ManualIssue.UNBALANCED -> R.string.manual_issue_unbalanced
 }
 
-/** Money text in the unit from settings (toman by default). Stateless. */
-private fun moneyText(rial: Long, unit: AmountUnit): String = MoneyFormat.format(rial, unit)

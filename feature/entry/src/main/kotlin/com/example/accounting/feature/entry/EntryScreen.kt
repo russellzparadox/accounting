@@ -53,7 +53,6 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.PersianDigits
 import com.example.accounting.core.domain.JournalEntry
 
@@ -63,13 +62,13 @@ fun EntryRoute(
     modifier: Modifier = Modifier,
     onEditAsDocument: (JournalEntry) -> Unit = {},
     onOpenSettings: () -> Unit = {},
+    onOpenBackendSettings: () -> Unit = {},
 ) {
     val viewModel: EntryViewModel = hiltViewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val voiceModel: VoiceViewModel = hiltViewModel()
     val voice by voiceModel.state.collectAsStateWithLifecycle()
     val input by viewModel.input.collectAsStateWithLifecycle()
-    val amountUnit by viewModel.amountUnit.collectAsStateWithLifecycle()
     // Recognized text fills the field. It is never sent here: the user taps send. Re-entering the tab re-delivers the
     // last transcript; EntryViewModel ignores it because its seq was already applied.
     LaunchedEffect(voice.transcript) {
@@ -94,14 +93,16 @@ fun EntryRoute(
         input = input,
         onInputChange = viewModel::onInputChange,
         onEditAsDocument = onEditAsDocument,
-        amountUnit = amountUnit,
         onOpenSettings = onOpenSettings,
+        onOpenBackendSettings = onOpenBackendSettings,
     )
 }
 
 /**
  * Chat-style entry screen. The unsent input text comes in as [input] (held by EntryViewModel). Only the open
- * sheet/dialog is local state.
+ * sheet is local state. The backend URL and token are edited only in Settings: a NOT_CONFIGURED error offers
+ * «تنظیمات سرور», which calls [onOpenBackendSettings].
+ * Amounts use the unit from LocalAmountUnit.
  * Every change goes out as an [EntryAction]; nothing is written here.
  */
 @Composable
@@ -115,15 +116,10 @@ fun EntryScreen(
     input: String = "",
     onInputChange: (String) -> Unit = {},
     onEditAsDocument: (JournalEntry) -> Unit = {},
-    amountUnit: AmountUnit = AmountUnit.TOMAN,
     onOpenSettings: () -> Unit = {},
+    onOpenBackendSettings: () -> Unit = {},
 ) {
     var showManual by rememberSaveable { mutableStateOf(false) }
-    var showConfig by rememberSaveable { mutableStateOf(false) }
-    val notConfigured = state.items.any { it is ChatItem.Error && it.kind == EntryErrorKind.NOT_CONFIGURED }
-    LaunchedEffect(notConfigured) {
-        if (notConfigured) showConfig = true
-    }
 
     val context = LocalContext.current
     var micSheet by rememberSaveable { mutableStateOf<MicSheet?>(null) }
@@ -174,10 +170,9 @@ fun EntryScreen(
             state = state,
             onAction = onAction,
             accountName = accountName,
-            onConfigure = { showConfig = true },
+            onOpenBackendSettings = onOpenBackendSettings,
             onManualEntry = { showManual = true },
             onEditAsDocument = onEditAsDocument,
-            amountUnit = amountUnit,
             modifier = Modifier.padding(padding),
         )
     }
@@ -189,7 +184,6 @@ fun EntryScreen(
                 onAction(action)
                 showManual = false
             },
-            amountUnit = amountUnit,
         )
     }
     micSheet?.let { sheet ->
@@ -204,15 +198,6 @@ fun EntryScreen(
                 openAppSettings(context)
             },
             onDismiss = { micSheet = null },
-        )
-    }
-    if (showConfig) {
-        BackendConfigDialog(
-            onDismiss = { showConfig = false },
-            onSave = { url, token ->
-                onAction(EntryAction.SaveBackendConfig(url, token))
-                showConfig = false
-            },
         )
     }
 }
@@ -248,10 +233,9 @@ private fun ChatList(
     state: EntryUiState,
     onAction: (EntryAction) -> Unit,
     accountName: (String) -> String,
-    onConfigure: () -> Unit,
+    onOpenBackendSettings: () -> Unit,
     onManualEntry: () -> Unit,
     onEditAsDocument: (JournalEntry) -> Unit,
-    amountUnit: AmountUnit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -273,10 +257,9 @@ private fun ChatList(
                 item = item,
                 onAction = onAction,
                 accountName = accountName,
-                onConfigure = onConfigure,
+                onOpenBackendSettings = onOpenBackendSettings,
                 onManualEntry = onManualEntry,
                 onEditAsDocument = onEditAsDocument,
-                amountUnit = amountUnit,
             )
         }
         if (state.busy) {
@@ -290,10 +273,9 @@ private fun ChatRow(
     item: ChatItem,
     onAction: (EntryAction) -> Unit,
     accountName: (String) -> String,
-    onConfigure: () -> Unit,
+    onOpenBackendSettings: () -> Unit,
     onManualEntry: () -> Unit,
     onEditAsDocument: (JournalEntry) -> Unit,
-    amountUnit: AmountUnit,
 ) {
     when (item) {
         is ChatItem.UserText -> UserBubble(item.text)
@@ -303,9 +285,8 @@ private fun ChatRow(
             onAction = onAction,
             accountName = accountName,
             onEditAsDocument = onEditAsDocument,
-            amountUnit = amountUnit,
         )
-        is ChatItem.Error -> ErrorBubble(item, onAction, onConfigure, onManualEntry)
+        is ChatItem.Error -> ErrorBubble(item, onAction, onOpenBackendSettings, onManualEntry)
         is ChatItem.Committed -> CommittedBubble(item, onAction)
         is ChatItem.Reversed -> ReversedBubble(item)
     }
@@ -402,7 +383,7 @@ private fun ClarificationBubble(item: ChatItem.Clarification, onAction: (EntryAc
 private fun ErrorBubble(
     item: ChatItem.Error,
     onAction: (EntryAction) -> Unit,
-    onConfigure: () -> Unit,
+    onOpenBackendSettings: () -> Unit,
     onManualEntry: () -> Unit,
 ) {
     Surface(
@@ -432,7 +413,7 @@ private fun ErrorBubble(
                         }
                     }
                     ErrorAction.CONFIGURE_SERVER -> {
-                        OutlinedButton(onClick = onConfigure, modifier = FullWidthButtonModifier) {
+                        OutlinedButton(onClick = onOpenBackendSettings, modifier = FullWidthButtonModifier) {
                             Text(stringResource(R.string.action_configure_server))
                         }
                     }

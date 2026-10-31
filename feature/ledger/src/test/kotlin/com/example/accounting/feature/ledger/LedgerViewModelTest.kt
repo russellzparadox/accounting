@@ -2,6 +2,7 @@ package com.example.accounting.feature.ledger
 
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.db.AppDatabase
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.seed.ChartSeeder
@@ -11,6 +12,7 @@ import com.example.accounting.core.domain.JournalLine
 import com.example.accounting.core.domain.Money
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.domain.TemplateId
+import com.example.accounting.core.persian.AmountUnit
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -86,7 +88,7 @@ class LedgerViewModelTest {
     fun journalIsNewestFirstAndSearchFoldsArabicYeh() {
         commit(sale("a", LocalDate.of(2026, 1, 5), 1_000_000L, "فروش نقدی"))
         commit(sale("b", LocalDate.of(2026, 1, 8), 300_000L, "فروش به علي"))
-        val vm = LedgerViewModel(ledger, clock)
+        val vm = LedgerViewModel(ledger, clock, SettingsRepository(context))
 
         val rows = awaitValue({ vm.journal.value }) { it.size == 2 }
         assertEquals(listOf("b", "a"), rows.map { it.id })
@@ -100,7 +102,7 @@ class LedgerViewModelTest {
     fun searchMatchesTomanAmountWrittenWithPersianDigits() {
         commit(sale("a", LocalDate.of(2026, 1, 5), 5_000_000L, "خرید"))
         commit(sale("b", LocalDate.of(2026, 1, 6), 1_200_000L, "خرید دیگر"))
-        val vm = LedgerViewModel(ledger, clock)
+        val vm = LedgerViewModel(ledger, clock, SettingsRepository(context))
         awaitValue({ vm.journal.value }) { it.size == 2 }
 
         vm.onJournalQuery("۵۰۰٬۰۰۰")
@@ -108,10 +110,36 @@ class LedgerViewModelTest {
         assertEquals("a", filtered.single().id)
     }
 
+    /** The fiscal year chosen in Settings is the initial selection; without one, the current Jalali year (1404). */
+    @Test
+    fun fiscalYearFromSettingsIsTheDefaultSelection() {
+        assertEquals(1404, LedgerViewModel(ledger, clock, SettingsRepository(context)).filter.value.year)
+        runBlocking { ledger.ensureFiscalYear(1403) }
+        SettingsRepository(context).setFiscalYear(1403)
+        assertEquals(1403, LedgerViewModel(ledger, clock, SettingsRepository(context)).filter.value.year)
+    }
+
+    /** Search by amount reads the query in the unit from settings: rial mode matches the rial value only. */
+    @Test
+    fun searchByAmountReadsTheQueryInTheSettingsUnit() {
+        commit(sale("a", LocalDate.of(2026, 1, 5), 5_000_000L, "خرید"))
+        val settings = SettingsRepository(context)
+        settings.setAmountUnit(AmountUnit.RIAL)
+        val vm = LedgerViewModel(ledger, clock, settings)
+        awaitValue({ vm.journal.value }) { it.size == 1 }
+
+        vm.onJournalQuery("500000")
+        awaitValue({ vm.journal.value }) { it.isEmpty() }
+
+        vm.onJournalQuery("5000000")
+        assertEquals("a", awaitValue({ vm.journal.value }) { it.size == 1 }.single().id)
+        settings.setAmountUnit(AmountUnit.TOMAN)
+    }
+
     @Test
     fun reversalIsLinkedBothWaysAndOriginalCannotBeReversedTwice() {
         commit(sale("a", LocalDate.of(2026, 1, 5), 1_000_000L, "فروش"))
-        val vm = LedgerViewModel(ledger, clock)
+        val vm = LedgerViewModel(ledger, clock, SettingsRepository(context))
         awaitValue({ vm.journal.value }) { it.size == 1 }
 
         vm.openDocument("a")
@@ -141,7 +169,7 @@ class LedgerViewModelTest {
     fun reversalLinkAndBadgeHoldWhenTheOtherDocumentIsOutsideTheDateRange() {
         // Original in Azar 1404 (2025-12-05). Reversal dated today, in Dey 1404 (2026-01-10).
         commit(sale("a", LocalDate.of(2025, 12, 5), 1_000_000L, "فروش آذر"))
-        val vm = LedgerViewModel(ledger, clock)
+        val vm = LedgerViewModel(ledger, clock, SettingsRepository(context))
         awaitValue({ vm.journal.value }) { it.size == 1 }
 
         vm.openDocument("a")
@@ -170,7 +198,7 @@ class LedgerViewModelTest {
     fun accountLedgerRunsBalanceAndTotalsMatchTheNet() {
         commit(sale("a", LocalDate.of(2026, 1, 5), 1_000_000L, "فروش"))
         commit(sale("b", LocalDate.of(2026, 1, 8), 300_000L, "فروش دوم"))
-        val vm = LedgerViewModel(ledger, clock)
+        val vm = LedgerViewModel(ledger, clock, SettingsRepository(context))
 
         vm.selectAccount("1100")
         val ui = awaitValue({ vm.accountLedger.value }) { it?.rows?.size == 2 }!!

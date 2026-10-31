@@ -61,7 +61,8 @@ data class ManualJournalUi(
     val dateText: String,
     val dateValid: Boolean,
     val dateYear: Int?,
-    val dateYearOpen: Boolean,
+    /** True when the typed year is already open. A closed year is opened by the save; it does not block it. */
+    val dateYearOpened: Boolean,
     val memo: String,
     val rows: List<ManualRowUi>,
     val check: ManualCheck,
@@ -75,8 +76,8 @@ data class ManualJournalUi(
     /** Unit the amounts are typed and shown in (settings). */
     val unit: AmountUnit = AmountUnit.TOMAN,
 ) {
-    /** Save is possible only for a balanced, valid document in an open fiscal year, once. */
-    val canSave: Boolean get() = check.isValid && dateValid && dateYearOpen && !saving && savedDocNumber == null
+    /** Save is possible for a balanced, valid document with a valid date, once. */
+    val canSave: Boolean get() = check.isValid && dateValid && !saving && savedDocNumber == null
 }
 
 /** Everything the editor can ask for. Routed through ManualJournalViewModel.onAction. */
@@ -138,7 +139,7 @@ internal fun buildManualUi(
         dateText = draft.dateText,
         dateValid = date != null,
         dateYear = year,
-        dateYearOpen = year != null && year in openYears,
+        dateYearOpened = year != null && year in openYears,
         memo = draft.memo,
         rows = rows,
         check = ManualJournal.check(draft.lines.map { it.toDomain(unit) }, accounts),

@@ -1,6 +1,8 @@
 package com.example.accounting.feature.ledger
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -14,7 +16,10 @@ import com.example.accounting.core.domain.JournalLine
 import com.example.accounting.core.domain.Money
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.domain.TemplateId
+import com.example.accounting.core.persian.AmountUnit
+import com.example.accounting.core.persian.MoneyFormat
 import com.example.accounting.core.persian.PersianDigits
+import com.example.accounting.core.ui.money.LocalAmountUnit
 import com.example.accounting.core.ui.theme.AccountingTheme
 import java.time.LocalDate
 import org.junit.Assert.assertTrue
@@ -244,5 +249,109 @@ class LedgerScreenTest {
         }
         compose.onNodeWithText(str(R.string.status_reversed)).assertExists()
         assertNoEditOrDeleteAction()
+    }
+
+    private fun oneRowJournal(): List<JournalRow> = listOf(
+        JournalRow(
+            id = "a",
+            date = LocalDate.of(2026, 1, 5),
+            docNumber = 1,
+            memo = "فروش",
+            totalRial = 1_000_000L,
+            reversalOfNumber = null,
+            isReversal = false,
+            isReversed = false,
+        ),
+    )
+
+    /** Journal row amount follows the unit from LocalAmountUnit: 1,000,000 rial shows as 1,000,000 rial. */
+    @Test
+    fun journalRowAmountIsRialWhenSettingIsRial() {
+        compose.setContent {
+            AccountingTheme {
+                CompositionLocalProvider(LocalAmountUnit provides AmountUnit.RIAL) {
+                    JournalListScreen(
+                        years = listOf(1404),
+                        filter = LedgerFilter(year = 1404),
+                        query = "",
+                        rows = oneRowJournal(),
+                        onYear = {},
+                        onPreset = {},
+                        onFromChange = {},
+                        onToChange = {},
+                        onQuery = {},
+                        onOpen = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText(MoneyFormat.format(1_000_000L, AmountUnit.RIAL)).assertIsDisplayed()
+    }
+
+    /** Same row in toman mode: 1,000,000 rial shows as 100,000 toman. */
+    @Test
+    fun journalRowAmountIsTomanWhenSettingIsToman() {
+        compose.setContent {
+            AccountingTheme {
+                CompositionLocalProvider(LocalAmountUnit provides AmountUnit.TOMAN) {
+                    JournalListScreen(
+                        years = listOf(1404),
+                        filter = LedgerFilter(year = 1404),
+                        query = "",
+                        rows = oneRowJournal(),
+                        onYear = {},
+                        onPreset = {},
+                        onFromChange = {},
+                        onToChange = {},
+                        onQuery = {},
+                        onOpen = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText(MoneyFormat.format(1_000_000L, AmountUnit.TOMAN)).assertIsDisplayed()
+    }
+
+    /** Account ledger totals follow the unit from LocalAmountUnit. */
+    @Test
+    fun accountLedgerTotalsFollowTheSettingsUnit() {
+        val ui = AccountLedgerUi(
+            code = "1100",
+            name = "صندوق",
+            rows = listOf(
+                LedgerRowUi(
+                    entryId = "a",
+                    date = LocalDate.of(2026, 1, 5),
+                    docNumber = 1,
+                    memo = "فروش",
+                    debit = 1_000_000L,
+                    credit = 0L,
+                    balance = 1_000_000L,
+                ),
+            ),
+            totalDebit = 1_000_000L,
+            totalCredit = 0L,
+            closing = 1_000_000L,
+        )
+        compose.setContent {
+            AccountingTheme {
+                CompositionLocalProvider(LocalAmountUnit provides AmountUnit.RIAL) {
+                    AccountLedgerScreen(
+                        ui = ui,
+                        years = listOf(1404),
+                        filter = LedgerFilter(year = 1404),
+                        onYear = {},
+                        onPreset = {},
+                        onFromChange = {},
+                        onToChange = {},
+                        onBack = {},
+                        onOpen = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText(
+            context.getString(R.string.ledger_total_debit, MoneyFormat.format(1_000_000L, AmountUnit.RIAL)),
+        ).assertIsDisplayed()
     }
 }

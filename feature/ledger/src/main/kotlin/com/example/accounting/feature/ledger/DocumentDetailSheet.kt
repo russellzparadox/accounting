@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.accounting.core.domain.Side
+import com.example.accounting.core.ui.money.amountText
 
 /**
  * Document sheet host. Reads [LedgerViewModel.detail]; shows nothing when no document is open.
@@ -138,7 +139,7 @@ internal fun DocumentDetailContent(
                 Text(
                     text = stringResource(
                         R.string.amount_side,
-                        tomanText(line.amount.rial),
+                        amountText(line.amount.rial),
                         stringResource(if (line.side == Side.DEBIT) R.string.side_debit else R.string.side_credit),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
@@ -148,12 +149,12 @@ internal fun DocumentDetailContent(
         }
         HorizontalDivider()
         Text(
-            text = stringResource(R.string.doc_total_debit, tomanText(entry.debitTotal.rial)),
+            text = stringResource(R.string.doc_total_debit, amountText(entry.debitTotal.rial)),
             style = MaterialTheme.typography.bodyMedium,
             color = onSurface,
         )
         Text(
-            text = stringResource(R.string.doc_total_credit, tomanText(entry.creditTotal.rial)),
+            text = stringResource(R.string.doc_total_credit, amountText(entry.creditTotal.rial)),
             style = MaterialTheme.typography.bodyMedium,
             color = onSurface,
         )

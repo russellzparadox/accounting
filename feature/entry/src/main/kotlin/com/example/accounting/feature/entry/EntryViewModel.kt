@@ -3,7 +3,6 @@ package com.example.accounting.feature.entry
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
 import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.nlp.NlParserProvider
@@ -16,10 +15,14 @@ import com.example.accounting.core.domain.PartyAccountResolver
 import com.example.accounting.core.domain.PostingEngine
 import com.example.accounting.core.domain.TransactionIntent
 import com.example.accounting.core.domain.pipeline.ConfirmReason
+import com.example.accounting.core.domain.pipeline.InputNormalizer
+import com.example.accounting.core.domain.pipeline.NlParser
 import com.example.accounting.core.domain.pipeline.NlPipeline
+import com.example.accounting.core.domain.pipeline.ParserResult
+import com.example.accounting.core.domain.pipeline.PipelineError
 import com.example.accounting.core.domain.pipeline.PipelineResult
-import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
+import com.example.accounting.core.persian.JalaliPickerState
 import com.example.accounting.core.persian.MoneyFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,12 +33,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -70,10 +70,6 @@ class EntryViewModel @Inject constructor(
      * (this ViewModel is Activity-scoped and the tab's route leaves composition).
      */
     val input: StateFlow<String> = inputText.asStateFlow()
-
-    /** Amount unit from settings, for the draft card and the manual sheet. */
-    val amountUnit: StateFlow<AmountUnit> = settings.settings.map { it.amountUnit }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, settings.current.amountUnit)
 
     /** Seq of the last voice transcript applied to [input]. */
     private var lastVoiceSeq = 0
@@ -113,7 +109,6 @@ class EntryViewModel @Inject constructor(
             is EntryAction.UseDetectedAmount -> useDetectedAmount(action.draftId)
             is EntryAction.UseModelAmount -> useModelAmount(action.draftId)
             is EntryAction.EditAmount -> editAmount(action.draftId, action.amountRial)
-            is EntryAction.SaveBackendConfig -> saveBackendConfig(action.baseUrl, action.token)
             is EntryAction.Undo -> undo(action.docId)
             is EntryAction.SubmitManual -> submitManual(action)
         }
@@ -160,8 +155,16 @@ class EntryViewModel @Inject constructor(
     private suspend fun runPipeline(text: String): Step {
         val parser = parserProvider.parserFor(configStore.config.first())
             ?: return Step(errorItem(EntryErrorKind.NOT_CONFIGURED, text), pending = null)
-        val fiscal = openFiscalYear()
-        val pipeline = NlPipeline(parser, PostingEngine(chart, parties, fiscal), fiscal)
+        // The fiscal year follows the entry's own date, not today's. So the parse runs first, its date opens the
+        // matching fiscal year, and the pipeline replays that same parse result (the backend is called once).
+        val normalized = InputNormalizer.normalize(text)
+        val parsed: ParserResult = if (normalized.isEmpty()) {
+            ParserResult.Error(PipelineError.EmptyInput)
+        } else {
+            parser.parse(normalized)
+        }
+        val fiscal = openFiscalYear(entryDate(parsed))
+        val pipeline = NlPipeline(ReplayParser(parsed), PostingEngine(chart, parties, fiscal), fiscal)
         return when (val result = pipeline.process(text)) {
             is PipelineResult.Draft -> Step(draftCard(newId(), result, result.intent.amountRial), pending = null)
             is PipelineResult.NeedsClarification ->
@@ -225,13 +228,6 @@ class EntryViewModel @Inject constructor(
             return
         }
         rebase(card, rial)
-    }
-
-    private fun saveBackendConfig(baseUrl: String, token: String) {
-        configStore.save(BackendConfig(baseUrl, token))
-        mutableState.update { s ->
-            s.copy(items = s.items.filterNot { it is ChatItem.Error && it.kind == EntryErrorKind.NOT_CONFIGURED })
-        }
     }
 
     /** Display name for an account code. Party accounts (معین) are not in the chart, so the code is shown. */
@@ -300,15 +296,29 @@ class EntryViewModel @Inject constructor(
         appendItem(item)
     }
 
-    /** First-run setup (chart seed) runs once; the fiscal year for today is ensured on every call (idempotent). */
-    private suspend fun openFiscalYear(): FiscalYear {
+    /**
+     * First-run setup (chart seed) runs once. The fiscal year of [date] (today by default) is opened if it is not
+     * open yet: idempotent, and it never fails because a year was not opened.
+     */
+    private suspend fun openFiscalYear(date: LocalDate = LocalDate.now(clock)): FiscalYear {
         setupLock.withLock {
             if (!seeded) {
                 seeder.seed()
                 seeded = true
             }
         }
-        return ledger.ensureFiscalYear(JalaliDate.from(LocalDate.now(clock)).year)
+        return ledger.ensureFiscalYear(JalaliDate.from(date).year)
+    }
+
+    /**
+     * The date the parser gave, when it lies in the supported Jalali year range. Otherwise today: the pipeline then
+     * rejects the out-of-range date with DateOutsideFiscalYear instead of opening a fiscal year for it.
+     */
+    private fun entryDate(parsed: ParserResult): LocalDate {
+        val date = (parsed as? ParserResult.Intent)?.parsed?.intent?.date ?: return LocalDate.now(clock)
+        val year = JalaliDate.from(date).year
+        val supported = year in JalaliPickerState.MIN_YEAR..JalaliPickerState.MAX_YEAR
+        return if (supported) date else LocalDate.now(clock)
     }
 
     private fun draftCard(id: String, draft: PipelineResult.Draft, modelRial: Long): ChatItem.DraftCard =
@@ -384,6 +394,11 @@ class EntryViewModel @Inject constructor(
 
     /** Result of one pipeline run. [pending] is the original text waiting for a clarification answer. */
     private class Step(val item: ChatItem, val pending: String?)
+
+    /** Returns a parse result that was already obtained in [runPipeline]. Never calls the backend. */
+    private class ReplayParser(private val result: ParserResult) : NlParser {
+        override suspend fun parse(text: String): ParserResult = result
+    }
 
     private companion object {
         /** Manual entries are typed by the user, so the model-confidence check does not apply. */

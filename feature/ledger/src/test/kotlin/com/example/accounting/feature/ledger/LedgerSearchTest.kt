@@ -10,6 +10,7 @@ import com.example.accounting.core.domain.JournalLine
 import com.example.accounting.core.domain.Money
 import com.example.accounting.core.domain.Side
 import com.example.accounting.core.domain.TemplateId
+import com.example.accounting.core.persian.AmountUnit
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,24 +53,34 @@ class LedgerSearchTest {
         assertEquals("500000", LedgerSearch.normalize("500,000"))
     }
 
+    /** The query is read in the unit from settings: toman mode matches whole toman, rial mode matches rial. */
     @Test
-    fun amountMatchesRialOrWholeTomanOnly() {
-        assertTrue(LedgerSearch.amountMatches("500000", 5_000_000L))
-        assertTrue(LedgerSearch.amountMatches("5000000", 5_000_000L))
-        assertFalse(LedgerSearch.amountMatches("500", 5_000_000L))
-        assertFalse(LedgerSearch.amountMatches("1234", 12_345L))
-        assertFalse(LedgerSearch.amountMatches("فروش", 5_000_000L))
+    fun amountMatchesOnlyTheValueInTheChosenUnit() {
+        assertTrue(LedgerSearch.amountMatches("500000", 5_000_000L, AmountUnit.TOMAN))
+        assertFalse(LedgerSearch.amountMatches("5000000", 5_000_000L, AmountUnit.TOMAN))
+        assertFalse(LedgerSearch.amountMatches("500", 5_000_000L, AmountUnit.TOMAN))
+        assertFalse(LedgerSearch.amountMatches("12345", 12_345L, AmountUnit.TOMAN))
+        assertTrue(LedgerSearch.amountMatches("1234", 12_340L, AmountUnit.TOMAN))
+
+        assertTrue(LedgerSearch.amountMatches("5000000", 5_000_000L, AmountUnit.RIAL))
+        assertFalse(LedgerSearch.amountMatches("500000", 5_000_000L, AmountUnit.RIAL))
+        assertTrue(LedgerSearch.amountMatches("12345", 12_345L, AmountUnit.RIAL))
+
+        assertFalse(LedgerSearch.amountMatches("فروش", 5_000_000L, AmountUnit.RIAL))
     }
 
     @Test
     fun docMatchesMemoAccountNameAndAmount() {
         val d = doc("a", 1, LocalDate.of(2026, 1, 5), "فروش به علي", 5_000_000L)
         val name: (String) -> String = { names[it] ?: it }
-        assertTrue(LedgerSearch.matchesDoc(d, "علی", name))
-        assertTrue(LedgerSearch.matchesDoc(d, "صندوق", name))
-        assertTrue(LedgerSearch.matchesDoc(d, "۵۰۰٬۰۰۰", name))
-        assertTrue(LedgerSearch.matchesDoc(d, "", name))
-        assertFalse(LedgerSearch.matchesDoc(d, "خرید", name))
+        assertTrue(LedgerSearch.matchesDoc(d, "علی", AmountUnit.TOMAN, name))
+        assertTrue(LedgerSearch.matchesDoc(d, "صندوق", AmountUnit.TOMAN, name))
+        assertTrue(LedgerSearch.matchesDoc(d, "۵۰۰٬۰۰۰", AmountUnit.TOMAN, name))
+        assertTrue(LedgerSearch.matchesDoc(d, "", AmountUnit.TOMAN, name))
+        assertFalse(LedgerSearch.matchesDoc(d, "خرید", AmountUnit.TOMAN, name))
+        // In rial mode the same document is found by its rial value, not by the toman figure.
+        assertTrue(LedgerSearch.matchesDoc(d, "5000000", AmountUnit.RIAL, name))
+        assertFalse(LedgerSearch.matchesDoc(d, "۵۰۰٬۰۰۰", AmountUnit.RIAL, name))
     }
 
     @Test
@@ -78,7 +89,7 @@ class LedgerSearchTest {
         val b = doc("b", 2, LocalDate.of(2026, 1, 8), "فروش دوم", 300_000L)
         val r = doc("r", 3, LocalDate.of(2026, 1, 9), "اصلاح", 1_000_000L, reversalOf = "a")
         val links = listOf(ReversalLink(originalId = "a", originalNumber = 1, reversalId = "r", reversalNumber = 3))
-        val rows = buildJournalRows(listOf(a, b, r), "", links) { it }
+        val rows = buildJournalRows(listOf(a, b, r), "", links, AmountUnit.TOMAN) { it }
         assertEquals(listOf("r", "b", "a"), rows.map { it.id })
         val reversal = rows.first { it.id == "r" }
         assertTrue(reversal.isReversal)
@@ -91,7 +102,7 @@ class LedgerSearchTest {
     fun reversalLinkHoldsWhenTheOriginalIsOutsideTheListedDocs() {
         val r = doc("r", 3, LocalDate.of(2026, 1, 9), "اصلاح", 1_000_000L, reversalOf = "a")
         val links = listOf(ReversalLink(originalId = "a", originalNumber = 1, reversalId = "r", reversalNumber = 3))
-        val reversal = buildJournalRows(listOf(r), "", links) { it }.single()
+        val reversal = buildJournalRows(listOf(r), "", links, AmountUnit.TOMAN) { it }.single()
         assertEquals(1, reversal.reversalOfNumber)
         assertTrue(reversal.isReversal)
         assertFalse(reversal.isReversed)
@@ -101,7 +112,7 @@ class LedgerSearchTest {
     fun originalOutsideTheListedDocsShowsReversedBadge() {
         val a = doc("a", 1, LocalDate.of(2025, 12, 5), "فروش", 1_000_000L)
         val links = listOf(ReversalLink(originalId = "a", originalNumber = 1, reversalId = "r", reversalNumber = 3))
-        val original = buildJournalRows(listOf(a), "", links) { it }.single()
+        val original = buildJournalRows(listOf(a), "", links, AmountUnit.TOMAN) { it }.single()
         assertTrue(original.isReversed)
         assertEquals(null, original.reversalOfNumber)
     }

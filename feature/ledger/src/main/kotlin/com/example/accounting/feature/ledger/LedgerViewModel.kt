@@ -2,11 +2,13 @@ package com.example.accounting.feature.ledger
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.accounting.core.data.config.SettingsRepository
 import com.example.accounting.core.data.repo.CommittedDoc
 import com.example.accounting.core.data.repo.LedgerLine
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.repo.ReversalLink
 import com.example.accounting.core.domain.Account
+import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.JalaliDate
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Clock
@@ -39,12 +41,20 @@ import kotlinx.coroutines.launch
 class LedgerViewModel @Inject constructor(
     private val ledger: LedgerRepository,
     private val clock: Clock,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
 
     private val today: LocalDate get() = LocalDate.now(clock)
-    private val currentYear: Int = JalaliDate.from(LocalDate.now(clock)).year
 
-    private val _filter = MutableStateFlow(LedgerFilter(year = currentYear))
+    /** Jalali year of today. Used when Settings has no fiscal year chosen. */
+    private val currentJalaliYear: Int = JalaliDate.from(LocalDate.now(clock)).year
+
+    /** Amount unit from settings: search by amount reads the amount in this unit. */
+    private val unit: StateFlow<AmountUnit> = settings.settings.map { it.amountUnit }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, settings.current.amountUnit)
+
+    /** Fiscal year chosen in Settings is the default selection; without one, the current Jalali year. */
+    private val _filter = MutableStateFlow(LedgerFilter(year = settings.current.fiscalYear ?: currentJalaliYear))
     val filter: StateFlow<LedgerFilter> = _filter.asStateFlow()
 
     private val _journalQuery = MutableStateFlow("")
@@ -80,7 +90,7 @@ class LedgerViewModel @Inject constructor(
     private val appliedRange: StateFlow<DateRange> = _filter
         .map { f -> rangeFor(f.preset, f.year, today, f.custom) ?: fiscalRange(f.year) }
         .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, fiscalRange(currentYear))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, fiscalRange(_filter.value.year))
 
     private val journalDocs: StateFlow<List<CommittedDoc>> = combine(yearFlow, appliedRange) { year, range ->
         year to range
@@ -94,9 +104,9 @@ class LedgerViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Journal list, newest first, filtered by the search query. */
-    val journal: StateFlow<List<JournalRow>> = combine(journalDocs, _journalQuery, accountNames, reversalLinks) {
-            docs, query, names, links ->
-        buildJournalRows(docs, query, links) { code -> names[code] ?: code }
+    val journal: StateFlow<List<JournalRow>> = combine(journalDocs, _journalQuery, accountNames, reversalLinks, unit) {
+            docs, query, names, links, u ->
+        buildJournalRows(docs, query, links, u) { code -> names[code] ?: code }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Net (debit minus credit) per account for the selected fiscal year. Reloads on [refresh]. */
@@ -127,8 +137,15 @@ class LedgerViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     init {
-        // The current fiscal year must exist before any commit or reversal dated today.
-        viewModelScope.launch { ledger.ensureFiscalYear(currentYear) }
+        // The fiscal year from Settings (or the current year) must exist before any commit or reversal in it.
+        // A later change in Settings moves the selection to the new year.
+        viewModelScope.launch {
+            settings.settings.map { it.fiscalYear }.distinctUntilChanged().collect { chosen ->
+                val year = chosen ?: currentJalaliYear
+                ledger.ensureFiscalYear(year)
+                selectYear(year)
+            }
+        }
     }
 
     fun selectYear(year: Int) {

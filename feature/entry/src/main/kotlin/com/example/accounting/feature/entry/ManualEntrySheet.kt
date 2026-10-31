@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.example.accounting.core.domain.ExpenseCategory
 import com.example.accounting.core.domain.PaidWith
 import com.example.accounting.core.domain.TemplateId
+import com.example.accounting.core.ui.money.LocalAmountUnit
 
 private val TEMPLATE_CHOICES = listOf(
     TemplateId.PURCHASE_CASH,
@@ -48,6 +49,7 @@ private val TEMPLATE_CHOICES = listOf(
 
 /**
  * Manual entry without the backend. Builds a [EntryAction.SubmitManual] and hands it up.
+ * The amount is typed in the unit from LocalAmountUnit (settings): 500 is 500 rial or 500 toman accordingly.
  * Validation of the posting itself (party for credit, etc.) is done by the ViewModel.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +57,20 @@ private val TEMPLATE_CHOICES = listOf(
 fun ManualEntrySheet(
     onDismiss: () -> Unit,
     onSubmit: (EntryAction.SubmitManual) -> Unit,
-    amountUnit: AmountUnit = AmountUnit.TOMAN,
 ) {
     val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        ManualEntryForm(onDismiss = onDismiss, onSubmit = onSubmit)
+    }
+}
+
+/** Sheet body without the modal, so it can be tested directly. */
+@Composable
+fun ManualEntryForm(
+    onDismiss: () -> Unit,
+    onSubmit: (EntryAction.SubmitManual) -> Unit,
+) {
+    val amountUnit = LocalAmountUnit.current
     var template by rememberSaveable { mutableStateOf(TemplateId.PURCHASE_CASH) }
     var paidWith by rememberSaveable { mutableStateOf(PaidWith.CASH) }
     var category by rememberSaveable { mutableStateOf(ExpenseCategory.MISC) }
@@ -73,113 +86,111 @@ fun ManualEntrySheet(
     val isExpense = template == TemplateId.EXPENSE_PAID
     val canSubmit = amountRial != null && (!needsParty || party.isNotBlank())
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.manual_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.semantics { heading() },
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.manual_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() },
+        )
+        SectionLabel(stringResource(R.string.manual_template_label))
+        TEMPLATE_CHOICES.forEach { option ->
+            RadioRow(
+                label = stringResource(option.labelRes()),
+                selected = template == option,
+                onSelect = { template = option },
             )
-            SectionLabel(stringResource(R.string.manual_template_label))
-            TEMPLATE_CHOICES.forEach { option ->
+        }
+        OutlinedTextField(
+            value = amountText,
+            onValueChange = { amountText = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = {
+                Text(
+                    stringResource(
+                        if (amountUnit == AmountUnit.RIAL) R.string.amount_field_label_rial else R.string.amount_field_label,
+                    ),
+                )
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        )
+        if (hasPaidWith) {
+            SectionLabel(stringResource(R.string.manual_paid_label))
+            RadioRow(
+                label = stringResource(R.string.manual_paid_cash),
+                selected = paidWith == PaidWith.CASH,
+                onSelect = { paidWith = PaidWith.CASH },
+            )
+            RadioRow(
+                label = stringResource(R.string.manual_paid_bank),
+                selected = paidWith == PaidWith.BANK,
+                onSelect = { paidWith = PaidWith.BANK },
+            )
+        }
+        OutlinedTextField(
+            value = party,
+            onValueChange = { party = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.manual_party_label)) },
+            supportingText = { if (needsParty) Text(stringResource(R.string.manual_party_hint)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge,
+        )
+        if (isExpense) {
+            SectionLabel(stringResource(R.string.manual_category_label))
+            ExpenseCategory.entries.forEach { option ->
                 RadioRow(
                     label = stringResource(option.labelRes()),
-                    selected = template == option,
-                    onSelect = { template = option },
+                    selected = category == option,
+                    onSelect = { category = option },
                 )
             }
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = { amountText = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = {
-                    Text(
-                        stringResource(
-                            if (amountUnit == AmountUnit.RIAL) R.string.amount_field_label_rial else R.string.amount_field_label,
+        }
+        OutlinedTextField(
+            value = memo,
+            onValueChange = { memo = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.manual_memo_label)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge,
+        )
+        OutlinedButton(
+            onClick = {
+                amountRial?.let { rial ->
+                    onSubmit(
+                        EntryAction.SubmitManual(
+                            templateId = template,
+                            amountRial = rial,
+                            paidWith = if (hasPaidWith) paidWith else null,
+                            partyName = party.trim().ifBlank { null },
+                            category = if (isExpense) category else null,
+                            memo = memo.trim().ifBlank { null },
                         ),
                     )
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
-            if (hasPaidWith) {
-                SectionLabel(stringResource(R.string.manual_paid_label))
-                RadioRow(
-                    label = stringResource(R.string.manual_paid_cash),
-                    selected = paidWith == PaidWith.CASH,
-                    onSelect = { paidWith = PaidWith.CASH },
-                )
-                RadioRow(
-                    label = stringResource(R.string.manual_paid_bank),
-                    selected = paidWith == PaidWith.BANK,
-                    onSelect = { paidWith = PaidWith.BANK },
-                )
-            }
-            OutlinedTextField(
-                value = party,
-                onValueChange = { party = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.manual_party_label)) },
-                supportingText = { if (needsParty) Text(stringResource(R.string.manual_party_hint)) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge,
-            )
-            if (isExpense) {
-                SectionLabel(stringResource(R.string.manual_category_label))
-                ExpenseCategory.entries.forEach { option ->
-                    RadioRow(
-                        label = stringResource(option.labelRes()),
-                        selected = category == option,
-                        onSelect = { category = option },
-                    )
                 }
-            }
-            OutlinedTextField(
-                value = memo,
-                onValueChange = { memo = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.manual_memo_label)) },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge,
-            )
-            OutlinedButton(
-                onClick = {
-                    amountRial?.let { rial ->
-                        onSubmit(
-                            EntryAction.SubmitManual(
-                                templateId = template,
-                                amountRial = rial,
-                                paidWith = if (hasPaidWith) paidWith else null,
-                                partyName = party.trim().ifBlank { null },
-                                category = if (isExpense) category else null,
-                                memo = memo.trim().ifBlank { null },
-                            ),
-                        )
-                    }
-                },
-                enabled = canSubmit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.manual_submit))
-            }
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.confirm_cancel_action))
-            }
+            },
+            enabled = canSubmit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        ) {
+            Text(stringResource(R.string.manual_submit))
+        }
+        TextButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp),
+        ) {
+            Text(stringResource(R.string.confirm_cancel_action))
         }
     }
 }

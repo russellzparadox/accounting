@@ -87,15 +87,24 @@ class LedgerRepositoryTest {
         assertEquals(2, repo.commit(cashSale(oct1, 1000)).docNumber)
     }
 
+    /**
+     * Jalali 1404 and 1406 are not opened. A commit dated in them opens the year lazily (no error), the first
+     * document of that year is number 1, and each year numbers its own documents without gaps.
+     */
     @Test
-    fun rejectsDatesOutsideAnOpenFiscalYear() {
-        // Jalali 1404 and 1406 are not opened.
-        assertThrows(DomainException::class.java) {
-            runBlocking { repo.commit(cashSale(LocalDate.of(2025, 12, 1), 1000)) }
-        }
-        assertThrows(DomainException::class.java) {
-            runBlocking { repo.commit(cashSale(LocalDate.of(2027, 6, 1), 1000)) }
-        }
+    fun committingIntoAnUnopenedFiscalYearOpensItAndNumbersFromOne() = runBlocking {
+        val previous = repo.commit(cashSale(LocalDate.of(2025, 12, 1), 1000)) // 1404
+        assertEquals(1404, previous.fiscalYear)
+        assertEquals(1, previous.docNumber)
+        assertEquals(2, repo.commit(cashSale(LocalDate.of(2025, 12, 2), 1000)).docNumber)
+
+        val later = repo.commit(cashSale(LocalDate.of(2027, 6, 1), 1000)) // 1406
+        assertEquals(1406, later.fiscalYear)
+        assertEquals(1, later.docNumber)
+
+        // 1405 keeps its own counter.
+        assertEquals(1, repo.commit(cashSale(oct1, 1000)).docNumber)
+        assertEquals(listOf(1404, 1405, 1406), repo.fiscalYears().first())
     }
 
     @Test

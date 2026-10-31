@@ -5,6 +5,7 @@ import com.example.accounting.core.data.repo.ReversalLink
 import com.example.accounting.core.domain.Account
 import com.example.accounting.core.domain.AccountLevel
 import com.example.accounting.core.domain.partyKey
+import com.example.accounting.core.persian.AmountUnit
 import com.example.accounting.core.persian.PersianDigits
 import java.time.LocalDate
 
@@ -41,17 +42,19 @@ object LedgerSearch {
         partyKey(PersianDigits.toLatin(text).replace(groupingSeparators, "")).lowercase()
 
     /**
-     * A digits-only query matches a line amount when it equals the rial value or the whole-toman value
-     * (rial / 10, only when divisible). Text queries never match amounts.
+     * A digits-only query matches a line amount written in [unit] (the setting): the rial value in RIAL, the
+     * whole-toman value in TOMAN (only when the rial value is divisible by 10). Text queries never match amounts.
      */
-    fun amountMatches(query: String, rial: Long): Boolean {
+    fun amountMatches(query: String, rial: Long, unit: AmountUnit): Boolean {
         if (query.isEmpty() || !query.all { it in '0'..'9' }) return false
-        val toman = if (rial % 10L == 0L) (rial / 10L).toString() else null
-        return query == rial.toString() || query == toman
+        return when (unit) {
+            AmountUnit.RIAL -> query == rial.toString()
+            AmountUnit.TOMAN -> rial % 10L == 0L && query == (rial / 10L).toString()
+        }
     }
 
-    /** Matches memo, account code, account name (includes party names) and amount. Empty query matches all. */
-    fun matchesDoc(doc: CommittedDoc, query: String, accountName: (String) -> String): Boolean {
+    /** Matches memo, account code, account name (includes party names) and amount in [unit]. Empty query matches all. */
+    fun matchesDoc(doc: CommittedDoc, query: String, unit: AmountUnit, accountName: (String) -> String): Boolean {
         val q = normalize(query)
         if (q.isEmpty()) return true
         val memo = doc.entry.memo
@@ -59,7 +62,7 @@ object LedgerSearch {
         return doc.entry.lines.any { line ->
             normalize(line.accountCode).contains(q) ||
                 normalize(accountName(line.accountCode)).contains(q) ||
-                amountMatches(q, line.amount.rial)
+                amountMatches(q, line.amount.rial, unit)
         }
     }
 
@@ -80,12 +83,13 @@ fun buildJournalRows(
     docs: List<CommittedDoc>,
     query: String,
     links: List<ReversalLink>,
+    unit: AmountUnit,
     accountName: (String) -> String,
 ): List<JournalRow> {
     val originalNumberByReversalId = links.associate { it.reversalId to it.originalNumber }
     val reversedIds = links.mapTo(HashSet()) { it.originalId }
     return docs
-        .filter { LedgerSearch.matchesDoc(it, query, accountName) }
+        .filter { LedgerSearch.matchesDoc(it, query, unit, accountName) }
         .sortedWith(compareByDescending<CommittedDoc> { it.entry.date }.thenByDescending { it.docNumber })
         .map { doc ->
             val originalId = doc.entry.reversalOfId

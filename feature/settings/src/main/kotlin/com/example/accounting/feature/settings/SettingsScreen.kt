@@ -23,12 +23,16 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -55,6 +59,7 @@ fun SettingsRoute(
     onClose: () -> Unit,
     onRestartApp: () -> Unit,
     versionName: String,
+    focusBackend: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: SettingsViewModel = hiltViewModel()
@@ -88,11 +93,15 @@ fun SettingsRoute(
         },
         onDismissRestore = { pendingRestore = null },
         onRestartApp = onRestartApp,
+        focusBackend = focusBackend,
         modifier = modifier,
     )
 }
 
-/** Stateless settings screen. Every change goes out as a [SettingsAction] or a callback. */
+/**
+ * Stateless settings screen. Every change goes out as a [SettingsAction] or a callback.
+ * [focusBackend]: scroll once to the backend («سرور حسابداری») section, used when the entry screen asks for a server.
+ */
 @Composable
 fun SettingsScreen(
     state: SettingsUi,
@@ -105,13 +114,25 @@ fun SettingsScreen(
     onConfirmRestore: () -> Unit,
     onDismissRestore: () -> Unit,
     onRestartApp: () -> Unit,
+    focusBackend: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var showPrivacy by rememberSaveable { mutableStateOf(false) }
+    val scroll = rememberScrollState()
+    // Offset of the backend section inside the scrolling column, measured once after the first layout.
+    var backendTop by remember { mutableStateOf<Int?>(null) }
+    var focusPending by rememberSaveable { mutableStateOf(focusBackend) }
+    LaunchedEffect(focusPending, backendTop) {
+        val top = backendTop
+        if (focusPending && top != null) {
+            scroll.animateScrollTo(top)
+            focusPending = false
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(scroll)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
@@ -132,7 +153,13 @@ fun SettingsScreen(
         }
         UnitSection(unit = state.amountUnit, onSelect = { onAction(SettingsAction.SetAmountUnit(it)) })
         FiscalSection(state = state, onAction = onAction)
-        BackendSection(state = state, onAction = onAction)
+        Column(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                if (backendTop == null) backendTop = coordinates.positionInParent().y.toInt()
+            },
+        ) {
+            BackendSection(state = state, onAction = onAction)
+        }
         BackupSection(state = state, onExport = onExport, onRestore = onRestore)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionTitle(stringResource(R.string.section_theme))

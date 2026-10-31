@@ -31,7 +31,7 @@
     <string name="action_use_detected">استفاده از مبلغ متن</string>
     <string name="action_use_model">استفاده از مبلغ پیشنهادی</string>
     <string name="action_discard">لغو پیش‌نویس</string>
-    <string name="action_configure_server">تنظیم سرور</string>
+    <string name="action_configure_server">رفتن به تنظیمات سرور</string>
     <string name="action_manual_entry">ثبت دستی</string>
     <string name="action_answer">ارسال پاسخ</string>
 
@@ -114,13 +114,6 @@
     <string name="category_bank_fee">کارمزد بانکی</string>
 
     <!-- Backend config dialog (moves to Settings in T12). -->
-    <string name="config_title">تنظیم سرور</string>
-    <string name="config_body">آدرس و کلید سرور را وارد کنید. این مقادیر فقط روی همین دستگاه ذخیره می‌شوند.</string>
-    <string name="config_url_label">آدرس سرور</string>
-    <string name="config_token_label">کلید دسترسی</string>
-    <string name="config_show">نمایش</string>
-    <string name="config_hide">پنهان کردن</string>
-    <string name="config_save">ذخیره</string>
     <string name="confirm_as_document">ویرایش به صورت سند</string>
     <string name="action_settings">تنظیمات</string>
 </resources>

@@ -224,16 +224,24 @@ class ManualJournalViewModelTest {
         assertFalse(ui.canSave)
     }
 
+    /**
+     * A year that is not open yet does not block the save: the save opens it and the document is number 1 of that
+     * year. The screen only says the year is not open yet (dateYearOpened = false).
+     */
     @Test
-    fun dateInUnopenedFiscalYearBlocksSave() {
+    fun dateInUnopenedFiscalYearIsSavedAndOpensThatYear() {
         val vm = newVm()
-        val rows = awaitRows(vm)
+        awaitRows(vm)
         fillBalanced(vm, debit = "1100", credit = "4100", amount = "500000")
         vm.onAction(ManualAction.SetDate("۱۴۰۵/۰۱/۰۱"))
-        val ui = awaitValue({ vm.ui.value }) { !it.dateYearOpen }
+        val ui = awaitValue({ vm.ui.value }) { !it.dateYearOpened }
         assertEquals(1405, ui.dateYear)
-        assertFalse(ui.canSave)
-        assertEquals(rows.size, ui.rows.size)
+        assertTrue(ui.canSave)
+
+        vm.onAction(ManualAction.Save)
+        val saved = awaitValue({ vm.ui.value }) { it.savedDocNumber != null }
+        assertEquals(1, saved.savedDocNumber)
+        assertTrue(runBlocking { ledger.fiscalYears().first() }.contains(1405))
     }
 
     @Test

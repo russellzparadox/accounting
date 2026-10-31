@@ -70,7 +70,12 @@ class ReportsViewModel @Inject constructor(
     private val settings: SettingsRepository,
 ) : ViewModel() {
     private val today: LocalDate get() = LocalDate.now(clock)
-    private val _ui = MutableStateFlow(ReportsUi(year = JalaliDate.from(LocalDate.now(clock)).year))
+
+    /** Jalali year of today. Used when Settings has no fiscal year chosen. */
+    private val currentJalaliYear: Int = JalaliDate.from(LocalDate.now(clock)).year
+
+    /** The fiscal year chosen in Settings is the default selection. */
+    private val _ui = MutableStateFlow(ReportsUi(year = settings.current.fiscalYear ?: currentJalaliYear))
     val ui: StateFlow<ReportsUi> = _ui.asStateFlow()
     private var job: Job? = null
 
@@ -81,6 +86,11 @@ class ReportsViewModel @Inject constructor(
         viewModelScope.launch {
             // drop(1): the first value is the one the initial refresh already used.
             settings.settings.map { it.amountUnit }.distinctUntilChanged().drop(1).collect { refresh() }
+        }
+        viewModelScope.launch {
+            // Same rule for the fiscal year: a change in Settings moves the selection (drop(1): the initial value is already used).
+            settings.settings.map { it.fiscalYear }.distinctUntilChanged().drop(1)
+                .collect { chosen -> selectYear(chosen ?: currentJalaliYear) }
         }
         refresh()
     }

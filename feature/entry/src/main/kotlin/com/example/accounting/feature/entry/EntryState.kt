@@ -24,8 +24,6 @@ sealed interface EntryAction {
     data class UseModelAmount(val draftId: String) : EntryAction
     /** User-typed amount for a draft (rial). Re-posts through PostingEngine; never edits lines by hand. */
     data class EditAmount(val draftId: String, val amountRial: Long) : EntryAction
-    /** Saves the backend endpoint and token (ConfigStore). Clears NOT_CONFIGURED error rows. */
-    data class SaveBackendConfig(val baseUrl: String, val token: String) : EntryAction
     /** [docId] is the committed entry id (CommittedDoc.id). Creates a reversal; never deletes. */
     data class Undo(val docId: String) : EntryAction
     data class SubmitManual(

@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.accounting.core.domain.AccountLevel
 import com.example.accounting.core.ui.theme.AccountingTypography
 import kotlin.math.abs
+import com.example.accounting.core.ui.money.amountText
 
 /**
  * Accounts tab. Shows the picker, or the account ledger once an account is picked.
@@ -200,6 +201,6 @@ private fun AccountRowItem(row: AccountRow, onPick: (String) -> Unit) {
 @Composable
 internal fun balanceText(netRial: Long): String = when {
     netRial == 0L -> stringResource(R.string.balance_zero)
-    netRial > 0L -> stringResource(R.string.amount_side, tomanText(netRial), stringResource(R.string.side_debit))
-    else -> stringResource(R.string.amount_side, tomanText(abs(netRial)), stringResource(R.string.side_credit))
+    netRial > 0L -> stringResource(R.string.amount_side, amountText(netRial), stringResource(R.string.side_debit))
+    else -> stringResource(R.string.amount_side, amountText(abs(netRial)), stringResource(R.string.side_credit))
 }

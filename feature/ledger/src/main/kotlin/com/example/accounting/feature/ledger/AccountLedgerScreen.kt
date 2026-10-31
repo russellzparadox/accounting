@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.Icons
 import com.example.accounting.core.ui.theme.AccountingTypography
+import com.example.accounting.core.ui.money.amountText
 
 /**
  * Account ledger (معین or کل): running balance per row, totals for the applied range, back to the picker.
@@ -89,12 +90,12 @@ internal fun AccountLedgerScreen(
         item(key = "totals") {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.ledger_total_debit, tomanText(ui.totalDebit)),
+                    text = stringResource(R.string.ledger_total_debit, amountText(ui.totalDebit)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = stringResource(R.string.ledger_total_credit, tomanText(ui.totalCredit)),
+                    text = stringResource(R.string.ledger_total_credit, amountText(ui.totalCredit)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -123,9 +124,9 @@ internal fun AccountLedgerScreen(
 private fun LedgerRowItem(row: LedgerRowUi, onOpen: (String) -> Unit) {
     val isDebit = row.debit > 0L
     val movement = if (isDebit) {
-        stringResource(R.string.amount_side, tomanText(row.debit), stringResource(R.string.side_debit))
+        stringResource(R.string.amount_side, amountText(row.debit), stringResource(R.string.side_debit))
     } else {
-        stringResource(R.string.amount_side, tomanText(row.credit), stringResource(R.string.side_credit))
+        stringResource(R.string.amount_side, amountText(row.credit), stringResource(R.string.side_credit))
     }
     Row(
         modifier = Modifier

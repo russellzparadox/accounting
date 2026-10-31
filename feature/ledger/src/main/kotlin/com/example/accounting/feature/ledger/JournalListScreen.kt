@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.accounting.core.ui.theme.AccountingTypography
+import com.example.accounting.core.ui.money.amountText
 
 /** Journal tab entry point. Collects the shared ViewModel and forwards actions. */
 @Composable
@@ -171,7 +172,7 @@ private fun JournalRowItem(row: JournalRow, onOpen: (String) -> Unit) {
             }
         }
         Text(
-            text = tomanText(row.totalRial),
+            text = amountText(row.totalRial),
             style = AccountingTypography.amount,
             color = MaterialTheme.colorScheme.onSurface,
         )
