@@ -5,9 +5,14 @@ import { LlmTransportError } from "./llm.js";
 import type { Logger } from "./log.js";
 import { LlmOutputError, parseText } from "./parse.js";
 import type { FixedWindowLimiter } from "./ratelimit.js";
+import {
+  completionBody, completionId, modelsBody, OPENAI_MAX_BODY_BYTES, oaError, type OpenAiError,
+  parseChatRequest, streamBody,
+} from "./openai_compat.js";
+import { validateText } from "./text.js";
 
+export { MAX_TEXT_CHARS } from "./text.js";
 export const MAX_BODY_BYTES = 4096;
-export const MAX_TEXT_CHARS = 500;
 
 export interface AppDeps {
   llm: LlmClient;
@@ -15,6 +20,8 @@ export interface AppDeps {
   limiter: FixedWindowLimiter;
   logger: Logger;
   now?: () => Date;
+  /** Model id echoed by /v1/chat/completions when the request names none, and listed by /v1/models. */
+  model?: string;
 }
 
 /** Calendar date in Asia/Tehran, yyyy-MM-dd. Relative Persian dates resolve against this. */
@@ -29,13 +36,17 @@ function send(res: ServerResponse, status: number, body: unknown, headers: Recor
   res.end(JSON.stringify(body));
 }
 
-async function readBody(req: IncomingMessage): Promise<string | null> {
+function sendOpenAi(res: ServerResponse, e: OpenAiError): void {
+  send(res, e.status, e.body, e.headers);
+}
+
+async function readBody(req: IncomingMessage, limit: number): Promise<string | null> {
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of req) {
     const b = chunk as Buffer;
     total += b.length;
-    if (total > MAX_BODY_BYTES) return null;
+    if (total > limit) return null;
     chunks.push(b);
   }
   return Buffer.concat(chunks).toString("utf8");
@@ -48,13 +59,89 @@ export function validateBody(x: unknown): string | null {
   if (keys.length !== 1 || keys[0] !== "text") return null;
   const t = (x as { text: unknown }).text;
   if (typeof t !== "string") return null;
-  const trimmed = t.trim();
-  const n = [...trimmed].length;
-  return n >= 1 && n <= MAX_TEXT_CHARS ? trimmed : null;
+  return validateText(t);
 }
 
 export function createApp(deps: AppDeps): Server {
   const { logger } = deps;
+  const modelId = deps.model ?? "claude-haiku-5-5";
+  const nowSec = () => Math.floor((deps.now ? deps.now() : new Date()).getTime() / 1000);
+
+  /** Shared bearer auth for the OpenAI-shaped routes. Returns the rate-limit key or null after replying. */
+  function openAiAuth(req: IncomingMessage, res: ServerResponse): string | null {
+    const auth = authenticate(req.headers.authorization, deps.tokens);
+    if (!auth.ok) {
+      logger.info("auth_rejected", { status: 401 });
+      sendOpenAi(res, oaError(401, "invalid_request_error", "invalid_api_key",
+        "Incorrect API key provided.", null, { "www-authenticate": "Bearer" }));
+      return null;
+    }
+    return auth.key;
+  }
+
+  async function chatCompletions(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const started = Date.now();
+    if (req.method !== "POST") {
+      return sendOpenAi(res, oaError(405, "invalid_request_error", "method_not_allowed", "Use POST.", null, { allow: "POST" }));
+    }
+    const key = openAiAuth(req, res);
+    if (key === null) return;
+
+    const rl = deps.limiter.check(key);
+    if (!rl.allowed) {
+      logger.info("rate_limited", { status: 429, key });
+      return sendOpenAi(res, oaError(429, "requests", "rate_limit_exceeded",
+        "Rate limit reached for requests.", null, { "retry-after": String(rl.retryAfterSec) }));
+    }
+
+    const raw = await readBody(req, OPENAI_MAX_BODY_BYTES);
+    if (raw === null) {
+      return sendOpenAi(res, oaError(413, "invalid_request_error", "request_too_large", "Request body is too large."));
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return sendOpenAi(res, oaError(400, "invalid_request_error", "invalid_json", "Request body is not valid JSON."));
+    }
+    const chat = parseChatRequest(parsed);
+    if (!chat.ok) return sendOpenAi(res, chat.err);
+
+    const { req: c } = chat;
+    const id = completionId();
+    const created = nowSec();
+    const model = c.model ?? modelId;
+    const today = todayTehran(deps.now ? deps.now() : new Date());
+    try {
+      const result = await parseText({ text: c.text, today }, deps.llm);
+      // Never log the text here. DEBUG_LOG_TEXT is honoured only by the /v1/parse log line.
+      logger.info("chat_parse", {
+        status: 200, outcome: result.kind, stream: c.stream, tools: c.hasTools, key, ms: Date.now() - started,
+      });
+      if (c.stream) {
+        res.writeHead(200, { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-store" });
+        return void res.end(streamBody({ id, created, model, result, hasTools: c.hasTools }));
+      }
+      return send(res, 200, completionBody({ id, created, model, result, hasTools: c.hasTools }));
+    } catch (e) {
+      const reason = e instanceof LlmOutputError || e instanceof LlmTransportError ? e.code : "unexpected";
+      const upstream = e instanceof LlmTransportError && e.status !== undefined ? e.status : null;
+      logger.info("chat_parse_failed", {
+        status: 502, reason, error: e instanceof Error ? e.name : "unknown", upstream_status: upstream,
+        key, ms: Date.now() - started,
+      });
+      const code = e instanceof LlmOutputError ? "invalid_llm_output" : "llm_unavailable";
+      return sendOpenAi(res, oaError(502, "server_error", code, "The upstream model failed to return a valid result."));
+    }
+  }
+
+  async function models(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (req.method !== "GET") {
+      return sendOpenAi(res, oaError(405, "invalid_request_error", "method_not_allowed", "Use GET.", null, { allow: "GET" }));
+    }
+    if (openAiAuth(req, res) === null) return;
+    return send(res, 200, modelsBody(modelId, nowSec()));
+  }
 
   async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const started = Date.now();
@@ -64,6 +151,8 @@ export function createApp(deps: AppDeps): Server {
       if (req.method !== "GET") return send(res, 405, { error: "method_not_allowed" }, { allow: "GET" });
       return send(res, 200, { status: "ok" });
     }
+    if (path === "/v1/chat/completions") return chatCompletions(req, res);
+    if (path === "/v1/models") return models(req, res);
     if (path !== "/v1/parse") return send(res, 404, { error: "not_found" });
     if (req.method !== "POST") return send(res, 405, { error: "method_not_allowed" }, { allow: "POST" });
 
@@ -79,7 +168,7 @@ export function createApp(deps: AppDeps): Server {
       return send(res, 429, { error: "rate_limited" }, { "retry-after": String(rl.retryAfterSec) });
     }
 
-    const raw = await readBody(req);
+    const raw = await readBody(req, MAX_BODY_BYTES);
     if (raw === null) return send(res, 413, { error: "too_large" });
 
     let parsed: unknown;
@@ -116,8 +205,14 @@ export function createApp(deps: AppDeps): Server {
   return createHttpServer((req, res) => {
     route(req, res).catch(() => {
       logger.info("internal_error", { status: 500 });
-      if (!res.headersSent) send(res, 500, { error: "internal" });
-      else res.end();
+      if (!res.headersSent) {
+        const p = new URL(req.url ?? "/", "http://localhost").pathname;
+        if (p.startsWith("/v1/chat/") || p === "/v1/models") {
+          sendOpenAi(res, oaError(500, "server_error", "internal", "Internal error."));
+        } else {
+          send(res, 500, { error: "internal" });
+        }
+      } else res.end();
     });
   });
 }
