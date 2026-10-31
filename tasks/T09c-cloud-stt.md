@@ -1,5 +1,5 @@
 # T09c — Cloud speech-to-text via the backend (OpenAI-compatible /v1/audio/transcriptions)
-Status: todo (queued after T09b)
+Status: in_progress
 Depends: T09b, T06b, T12b
 Read first: CLAUDE.md, handouts/T09-voice-input.md, handouts/T09b-voice-fallback-fix.md, handouts/T06b-openai-compat.md, docs/BACKEND.md, docs/VOICE.md, handouts/T12-settings-onboarding.md, handouts/T12b-settings-follow-through.md, handouts/T01d-ci-green.md, docs/CI.md, backend/src/**
 Skills to invoke: persian-writing:persian-writing, design:ux-copy, claude-api (backend env/provider docs)
