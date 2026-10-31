@@ -19,6 +19,8 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T08a | entry-viewmodel | T04, T07 | done (CI green run 71) |
 | T08 | entry-ui | T01b, T08a | done (CI green run 41191124546; build #86 released) |
 | T09 | voice-input | T08 | done (CI green run 41192294108; build #88+; manual device test pending by user) |
+| T09b | voice-fallback-fix | T09, T12b | todo (queued after T13) |
+| T09c | cloud-stt | T09b, T06b, T12b | todo (queued after T09b) |
 | T10 | ledger-ui | T04, T08 | done (fix rounds 1+2; final CI run 41194728898 success on 0f959e9; audit 20 MET, 3 PARTIAL, 0 NOT MET; see handouts/T10-ledger-ui.md) |
 | T10b | manual-journal-editor | T08, T10 | done (CI green run 102, build #102; D1+D3 carried to T12) |
 | T11 | reports | T10 | done (CI green run 109, build #109; PDF render unverified -> T13; unit setting -> T12) |
@@ -29,6 +31,6 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T14 | release-prep | T13 | todo |
 
 ## Run order
-T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T12b -> T13a -> T13 -> T14
+T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T12b -> T13a -> T13 -> T09b -> T09c -> T14
 
 Files: `tasks/Txx-slug.md` (from `tasks/_TEMPLATE.md`), `handouts/Txx-slug.md` (from `handouts/_TEMPLATE.md`).

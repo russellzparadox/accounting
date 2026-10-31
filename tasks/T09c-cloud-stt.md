@@ -1,0 +1,23 @@
+# T09c — Cloud speech-to-text via the backend (OpenAI-compatible /v1/audio/transcriptions)
+Status: todo (queued after T09b)
+Depends: T09b, T06b, T12b
+Read first: CLAUDE.md, handouts/T09-voice-input.md, handouts/T09b-voice-fallback-fix.md, handouts/T06b-openai-compat.md, docs/BACKEND.md, docs/VOICE.md, handouts/T12-settings-onboarding.md, handouts/T12b-settings-follow-through.md, handouts/T01d-ci-green.md, docs/CI.md, backend/src/**
+Skills to invoke: persian-writing:persian-writing, design:ux-copy, claude-api (backend env/provider docs)
+
+## Why
+On-device/Google recognition may be unavailable or unreachable (the user's phone failed; Google speech servers can be blocked in Iran). The owner originally asked for "both" on-device and cloud voice; cloud was stubbed in T09. Now implement it through the existing proxy so no STT key is in the app.
+
+## Deliverables
+BACKEND (Node, verified locally with `cd backend && npm ci && npm test && npm run build`, no keys, mock upstream):
+1. `POST /v1/audio/transcriptions` OpenAI-compatible (multipart/form-data: `file`, `model`, `language`, `prompt`, `response_format` json|text|verbose_json, `temperature` ignored). Same Bearer auth + rate limit as other endpoints; size limit (default 10 MB) and duration sanity; accepted types m4a/aac/mp4/ogg/opus/webm/wav/mp3; errors in OpenAI error shape. Response `{"text": "..."}`.
+2. Upstream STT client (env `STT_BASE_URL`, `STT_API_KEY`, `STT_MODEL` default `whisper-1`, `STT_TIMEOUT_MS`; any OpenAI-compatible provider: OpenAI, Groq, a local whisper.cpp/faster-whisper server). Default `language=fa` and a Persian accounting hint `prompt` (e.g. vocabulary: تومان، ریال، هزار، میلیون، نسیه، خرید، فروش، اجاره) unless the request overrides. Never log audio or transcript unless `DEBUG_LOG_TEXT=1`; never leak keys. If `STT_BASE_URL` unset -> 501 `not_configured` with a clear message. Do not buffer unboundedly (stream/size-cap).
+3. Tests: multipart parsing, auth/429/size/type errors, success with a stub upstream (local HTTP server), 501 when unconfigured, no-log guarantee; official `openai` npm client test for `audio.transcriptions.create` against the local server. Update docs/BACKEND.md (+ curl example, provider examples incl. Groq/OpenAI/local), `.env.example`.
+ANDROID (CI-only):
+4. `CloudSpeechSource` implementing `SpeechSource`: record with `MediaRecorder` (AAC/m4a, 16 kHz mono, ~64 kbps) to cacheDir, max 30 s (auto-stop), then upload to `{backendUrl}/v1/audio/transcriptions` with bearer token (reuse `ConfigStore`/NlParserHttp patterns, HttpURLConnection or existing OkHttp), language=fa; emit Partial("در حال تبدیل…")/Final(text)/typed errors (Offline, Unauthorized, RateLimited, TooLarge, NotConfigured -> «سرور برای تبدیل گفتار تنظیم نشده»). Delete the temp audio file in all paths. Mic permission flow reused. Never auto-submit: text fills the input field as before.
+5. Voice engine setting in Settings (`SettingsRepository`): «خودکار» (on-device -> system -> cloud when the previous engines fail with UNAVAILABLE/LANGUAGE/NETWORK and backend is configured) | «فقط روی دستگاه» | «فقط ابری». Default خودکار. Wire into the existing voice VM and the mic UI (show which engine is active, e.g. small label «ابری»/«دستگاه»); explicit confirm text the first time cloud is used: «صدای شما برای تبدیل به متن به سرور ارسال می‌شود».
+6. Privacy copy update (onboarding + settings, persian-writing): audio is sent to the backend ONLY when cloud engine is used; recorded audio is not stored by the app; what the backend/provider does with audio depends on the server you configured. Keep other disclosure points accurate.
+7. Tests: VM/engine-selection tests with fake sources (fallback order, settings modes, NotConfigured), Robolectric test for upload request shape using MockWebServer (multipart fields, bearer, file deletion), UI test for engine label and consent dialog. Update docs/VOICE.md and handouts.
+8. Honest limits in handout: real-mic + real provider accuracy unverified; give the user a manual checklist (set STT env on backend, run backend, set URL/token in app, choose «فقط ابری», speak the soda sentence).
+
+## Rules
+- Do backend first and verify locally; then Android in CI. ONE push per attempt; wait for THAT `android` (and `backend` workflow) run to finish (poll https://api.github.com/repos/russellzparadox/accounting/actions/runs?branch=claude/dreamy-mccarthy-mczm8c with `until` loops in Bash run_in_background); read failures via check-run annotations first. Max 8 pushes, commit prefix `T09c:`, only branch claude/dreamy-mccarthy-mczm8c, never weaken tests. Do NOT end your turn until the last runs completed AND `handouts/T09c-cloud-stt.md` (honest audit of items 1-8, final run ids) is written; update Status/README row.

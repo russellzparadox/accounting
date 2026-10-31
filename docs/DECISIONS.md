@@ -11,3 +11,4 @@
 - D10 Chart of accounts + 14 template ids in T02 are a proposal; accountant review pending (see handouts/T02).
 - D11 core:domain becomes a pure Kotlin/JVM module so tests run without Android SDK (T03).
 - D12 (user) Backend is OpenAI-compatible on both sides: inbound `/v1/chat/completions` + `/v1/models` (tool calling w/ strict JSON schema), upstream `LLM_PROVIDER=anthropic|openai` (any OpenAI-compatible base URL). App keeps `/v1/parse` and only talks to the proxy (no LLM key in app). Task T06b.
+- D13 (user bug report, real device) On-device fa-IR recognition failed (error 12/13 hidden as "unavailable"; no fallback). Decision: T09b fallback chain + clear errors + language-pack download + diagnostics card; T09c adds CLOUD STT via backend `/v1/audio/transcriptions` (OpenAI-compatible, Whisper-style) because Google speech may be unreachable in Iran. Engine setting خودکار/فقط دستگاه/فقط ابری. Audio sent to backend only when cloud engine is used.
