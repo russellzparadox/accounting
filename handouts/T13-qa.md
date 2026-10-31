@@ -1,5 +1,5 @@
 # Handout T13 — qa
-Status: done (code CI green: run 41210267830 on de7c888). Live LLM eval NOT run (no key). Accountant review pending (user).
+Status: done. Final android run 41210807374 on db523bf (contains all T13 commits): success. Live LLM eval NOT run (no key). Accountant review pending (user).
 
 ## Summary
 - Fuzz through the real stack (in-memory Room): 1000 random intents, 13 templates, ~10% reversals, invariants per batch.
@@ -8,7 +8,7 @@ Status: done (code CI green: run 41210267830 on de7c888). Live LLM eval NOT run 
 - Coverage gaps: picker balance unit, reports default fiscal year, process-death restore of unsent text, reports Compose test.
 - Docs: `docs/EVAL_REPORT.md`, `docs/ACCOUNTANT_REVIEW.md`, `docs/TESTING.md`.
 - Backend mock eval 58/58 on three paths; `npm test` 175/175.
-- Runs: android 41209690178 (8815733) success; android 41210267830 (de7c888, final code) success.
+- Runs: android 41209690178 (8815733) success; android 41210267830 (de7c888) success; android 41210613571 (ff332b5, handout) cancelled because a newer push superseded it; android 41210807374 (db523bf) success. db523bf is the remote head: it is another session's commit (T09b/T09c queue, D13, docs only) on top of T13 and is kept as is.
 
 ## Files created/changed
 - `core/domain/.../core/domain/PostingEngine.kt`: `PartyAccountResolver.find` (read-only); `UnsavedParty`; `DraftPartyResolver` (never writes; unknown party → placeholder code = last code of the kind's range, recorded in `unsaved`).
@@ -84,8 +84,8 @@ Key: MET = proven by a CI-run test, a local scratch test or a file I checked; PA
 ### Run discipline
 | Requirement | Result |
 |---|---|
-| ONE push per attempt; wait for that android run | MET: pushes 8815733 and de7c888, each awaited (41209690178, 41210267830). Handout push: see final run. |
-| Max 8 pushes | MET: 3 of 8 used (including handout push). |
+| ONE push per attempt; wait for that android run | MET: pushes 8815733, de7c888 (each awaited, both success) and ff332b5 (run cancelled by the superseding push db523bf from another session, not by a failure). The final head db523bf is awaited: run 41210807374 success. |
+| Max 8 pushes | MET: 3 pushes by this task (8815733, de7c888, ff332b5) plus this docs note; the other session pushed db523bf. |
 | Commit prefix `T13:` and trailers | MET |
 | No force-push, only `claude/dreamy-mccarthy-mczm8c`, dependabot untouched | MET |
 | Never weaken/skip tests | MET: no `@Ignore`/removed assertion. One assertion kept by preserving the draft id instead of changing it. |
