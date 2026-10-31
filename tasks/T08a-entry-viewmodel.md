@@ -1,5 +1,5 @@
 # T08a — Entry state layer: DI, config, ViewModel
-Status: in_progress
+Status: done
 Depends: T04, T07
 Read first: CLAUDE.md, handouts/T03-domain-core.md, handouts/T04-room-persistence.md, handouts/T05-persian-utils.md, handouts/T07-nl-pipeline.md, handouts/T01e-auto-release.md, docs/DESIGN.md (skim: copy strings), docs/CI.md
 Skills to invoke: persian-writing:persian-writing (all user-visible strings)
