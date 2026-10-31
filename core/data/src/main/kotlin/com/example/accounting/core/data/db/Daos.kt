@@ -117,6 +117,14 @@ interface JournalDao {
     @Query("SELECT COUNT(*) FROM journal_entry WHERE reversal_of_id = :id")
     suspend fun reversalCount(id: String): Int
 
+    /** Id of the document that reverses [id], or null. Unique by schema (reversal_of_id is unique). */
+    @Query("SELECT id FROM journal_entry WHERE reversal_of_id = :id")
+    suspend fun reversalIdOf(id: String): String?
+
+    @Transaction
+    @Query("SELECT * FROM journal_entry WHERE id = :id")
+    suspend fun findWithLines(id: String): EntryWithLines?
+
     @Transaction
     @Query(
         """SELECT * FROM journal_entry

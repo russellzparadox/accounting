@@ -51,6 +51,8 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
+    // Bottom bar icons (AppShell.kt).
+    implementation(libs.androidx.compose.material.icons.core)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

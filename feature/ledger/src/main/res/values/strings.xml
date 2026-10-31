@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Date filter (DateFilter.kt). Ranges are Jalali. -->
+    <string name="range_all">کل سال مالی</string>
+    <string name="range_this_month">ماه جاری</string>
+    <string name="range_previous_month">ماه قبل</string>
+    <string name="range_custom">بازه‌ی دلخواه</string>
+    <string name="range_from_label">از تاریخ</string>
+    <string name="range_to_label">تا تاریخ</string>
+    <string name="range_hint">مثلاً ۱۴۰۵/۰۱/۰۱</string>
+    <string name="range_error">تاریخ را به شکل سال/ماه/روز وارد کنید، مثلاً ۱۴۰۵/۰۱/۰۱. تاریخ شروع نباید بعد از پایان باشد.</string>
+    <string name="fiscal_year_label">سال مالی</string>
+
+    <!-- Journal list. -->
+    <string name="journal_title">دفتر روزنامه</string>
+    <string name="journal_search_label">جستجو در شرح، نام یا کد حساب و مبلغ</string>
+    <string name="journal_empty_title">سندی پیدا نشد</string>
+    <string name="journal_empty_body">برای این سال مالی و بازه‌ی انتخابی، سندی ثبت نشده یا جستجو چیزی پیدا نکرد.</string>
+    <string name="journal_row_head">%1$s · سند شماره %2$s</string>
+    <string name="journal_row_reversal_of">سند اصلاحی سند شماره %1$s</string>
+    <string name="journal_row_reversal">سند اصلاحی</string>
+    <string name="status_reversed">معکوس شده</string>
+    <string name="no_memo">بدون شرح</string>
+    <string name="side_debit">بدهکار</string>
+    <string name="side_credit">بستانکار</string>
+    <string name="amount_side">%1$s، %2$s</string>
+    <string name="balance_zero">بدون مانده</string>
+    <string name="nav_back_cd">بازگشت</string>
+
+    <!-- Account picker. Groups are headers. -->
+    <string name="accounts_title">حساب‌ها</string>
+    <string name="accounts_search_label">جستجو با کد یا نام حساب</string>
+    <string name="accounts_hide_zero">پنهان کردن حساب‌های بی‌مانده</string>
+    <string name="accounts_empty_title">حسابی پیدا نشد</string>
+    <string name="accounts_empty_body">کد یا نام دیگری را امتحان کنید.</string>
+    <string name="level_group">گروه</string>
+    <string name="level_general">کل</string>
+    <string name="level_detail">معین</string>
+
+    <!-- Account ledger. -->
+    <string name="ledger_title">گردش حساب %1$s</string>
+    <string name="ledger_empty_title">گردشی در این بازه نیست</string>
+    <string name="ledger_empty_body">بازه یا سال مالی دیگری را انتخاب کنید.</string>
+    <string name="ledger_total_debit">جمع بدهکار: %1$s</string>
+    <string name="ledger_total_credit">جمع بستانکار: %1$s</string>
+    <string name="ledger_closing">مانده‌ی پایان دوره: %1$s</string>
+    <string name="ledger_balance_line">مانده: %1$s</string>
+
+    <!-- Document sheet. Reversal is the only action. -->
+    <string name="doc_title">سند شماره %1$s</string>
+    <string name="doc_total_debit">جمع بدهکار: %1$s</string>
+    <string name="doc_total_credit">جمع بستانکار: %1$s</string>
+    <string name="doc_is_reversal_of">این سند، سند شماره %1$s را اصلاح می‌کند.</string>
+    <string name="doc_is_reversed_by">این سند با سند شماره %1$s معکوس شده است.</string>
+    <string name="doc_open_linked">رفتن به سند شماره %1$s</string>
+    <string name="doc_reverse_action">ابطال (سند اصلاحی)</string>
+    <string name="doc_cannot_reverse_reversal">سند اصلاحی را نمی‌توان دوباره ابطال کرد.</string>
+    <string name="doc_cannot_reverse_reversed">این سند قبلاً ابطال شده است.</string>
+    <string name="doc_reverse_dialog_title">ثبت سند اصلاحی؟</string>
+    <string name="doc_reverse_dialog_body">سندهای ثبت‌شده تغییر نمی‌کنند. یک سند معکوس با تاریخ امروز ثبت می‌شود و این کار قابل لغو نیست.</string>
+    <string name="doc_reverse_confirm">ثبت سند اصلاحی</string>
+    <string name="doc_reverse_cancel">انصراف</string>
+    <string name="doc_reversed_notice">سند اصلاحی شماره %1$s ثبت شد.</string>
+    <string name="doc_reverse_error">ابطال انجام نشد. چیزی تغییر نکرد.</string>
+    <string name="doc_close">بستن</string>
+</resources>

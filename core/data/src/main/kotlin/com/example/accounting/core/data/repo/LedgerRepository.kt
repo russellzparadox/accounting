@@ -54,6 +54,9 @@ data class TrialRow(val code: String, val name: String, val debit: Long, val cre
 /** [debitTotal] == [creditTotal] for any balanced ledger. */
 data class TrialBalance(val rows: List<TrialRow>, val debitTotal: Long, val creditTotal: Long)
 
+/** A document with the document it reverses ([reversalOf]) and the one that reverses it ([reversedBy]). */
+data class DocumentLinks(val doc: CommittedDoc, val reversalOf: CommittedDoc?, val reversedBy: CommittedDoc?)
+
 /**
  * Persistence for journal documents. Fiscal year is the Jalali year of the entry date.
  * Committed rows are never updated or deleted; fixes go through [reverse].
@@ -131,6 +134,19 @@ class LedgerRepository(
     }
 
     fun accounts(): Flow<List<Account>> = db.accountDao().observeAll().map { rows -> rows.map { it.toDomain() } }
+
+    /** Fiscal years that exist (opened), ascending. */
+    fun fiscalYears(): Flow<List<Int>> = db.fiscalYearDao().observeAll().map { rows -> rows.map { it.jalaliYear } }
+
+    /** One committed document with its reversal links. Null when [docId] does not exist. */
+    suspend fun document(docId: String): DocumentLinks? {
+        val doc = loadDoc(docId) ?: return null
+        val reversalOf = doc.entry.reversalOfId?.let { loadDoc(it) }
+        val reversedBy = db.journalDao().reversalIdOf(docId)?.let { loadDoc(it) }
+        return DocumentLinks(doc, reversalOf, reversedBy)
+    }
+
+    private suspend fun loadDoc(id: String): CommittedDoc? = db.journalDao().findWithLines(id)?.toCommittedDoc()
 
     private suspend fun commitInTx(entry: JournalEntry): CommittedDoc {
         val year = JalaliDate.from(entry.date).year

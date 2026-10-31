@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">حسابداری</string>
+
+    <!-- Bottom bar. First item is the start (right) edge in RTL. -->
+    <string name="nav_entry">ثبت</string>
+    <string name="nav_journal">دفتر روزنامه</string>
+    <string name="nav_accounts">حساب‌ها</string>
 </resources>
