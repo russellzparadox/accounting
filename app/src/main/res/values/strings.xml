@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">حسابداری</string>
-    <string name="home_placeholder_title">به حسابداری خوش‌آمدید</string>
-    <string name="home_placeholder_body">این صفحه‌ی موقت است. ثبت تراکنش‌ها به‌زودی اضافه می‌شود.</string>
 </resources>

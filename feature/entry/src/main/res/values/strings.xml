@@ -44,4 +44,63 @@
     <!-- Progress. -->
     <string name="loading_parse">در حال خواندن تراکنش…</string>
     <string name="loading_save">در حال ثبت…</string>
+
+    <!-- Entry screen and input bar (docs/DESIGN.md section 8). -->
+    <string name="entry_title">ثبت تراکنش</string>
+    <string name="entry_empty_title">هر تراکنش را بنویسید</string>
+    <string name="entry_empty_body">تراکنش را مثل همیشه بنویسید. پیش از ثبت، آن را بررسی می‌کنید.</string>
+    <string name="input_hint">مثلاً: ۴ قوطی نوشابه روی هم ۵۰۰٬۰۰۰ تومان خریدم</string>
+    <string name="input_send_cd">ارسال</string>
+    <string name="input_mic_cd">ضبط صدا</string>
+    <string name="input_mic_soon">به‌زودی</string>
+    <string name="input_mic_disabled_cd">%1$s، %2$s</string>
+
+    <!-- Confirmation card (DESIGN 5.3, 5.5). %1$s = amount with unit, %2$s = side word. -->
+    <string name="side_debit">بدهکار</string>
+    <string name="side_credit">بستانکار</string>
+    <string name="amount_cd">%1$s، %2$s</string>
+    <string name="confirm_debit_total">جمع بدهکار: %1$s</string>
+    <string name="confirm_credit_total">جمع بستانکار: %1$s</string>
+    <string name="confirm_edit_action">ویرایش مبلغ</string>
+    <string name="edit_amount_title">ویرایش مبلغ</string>
+    <string name="edit_amount_body">مبلغ را به تومان وارد کنید. تا وقتی تأیید نکرده‌اید، چیزی ثبت نمی‌شود.</string>
+    <string name="amount_field_label">مبلغ (تومان)</string>
+    <string name="action_save">ذخیره</string>
+
+    <!-- Clarification bubble. -->
+    <string name="ask_answer_hint">پاسخ را بنویسید</string>
+
+    <!-- Manual entry sheet. -->
+    <string name="manual_title">ثبت دستی</string>
+    <string name="manual_template_label">نوع تراکنش</string>
+    <string name="manual_paid_label">پرداخت با</string>
+    <string name="manual_paid_cash">نقدی</string>
+    <string name="manual_paid_bank">بانکی</string>
+    <string name="manual_party_label">طرف حساب</string>
+    <string name="manual_party_hint">برای خرید و فروش نسیه، طرف حساب لازم است.</string>
+    <string name="manual_category_label">دسته‌ی هزینه</string>
+    <string name="manual_memo_label">شرح (اختیاری)</string>
+    <string name="manual_submit">ثبت</string>
+    <string name="template_purchase_cash">خرید نقدی</string>
+    <string name="template_purchase_credit">خرید نسیه</string>
+    <string name="template_sale_cash">فروش نقدی</string>
+    <string name="template_sale_credit">فروش نسیه</string>
+    <string name="template_expense_paid">هزینه نقدی</string>
+    <string name="category_rent">اجاره</string>
+    <string name="category_freight">کرایه حمل</string>
+    <string name="category_phone">تلفن</string>
+    <string name="category_salary">حقوق</string>
+    <string name="category_utilities">قبوض</string>
+    <string name="category_repair">تعمیرات</string>
+    <string name="category_misc">متفرقه</string>
+    <string name="category_bank_fee">کارمزد بانکی</string>
+
+    <!-- Backend config dialog (moves to Settings in T12). -->
+    <string name="config_title">تنظیم سرور</string>
+    <string name="config_body">آدرس و کلید سرور را وارد کنید. این مقادیر فقط روی همین دستگاه ذخیره می‌شوند.</string>
+    <string name="config_url_label">آدرس سرور</string>
+    <string name="config_token_label">کلید دسترسی</string>
+    <string name="config_show">نمایش</string>
+    <string name="config_hide">پنهان کردن</string>
+    <string name="config_save">ذخیره</string>
 </resources>
