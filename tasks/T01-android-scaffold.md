@@ -1,5 +1,5 @@
 # T01 — android-scaffold
-Status: todo
+Status: in_progress
 Depends: T00
 Read first: CLAUDE.md, handouts/T00-bootstrap.md
 Skills to invoke: persian-writing:persian-writing
