@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":core:ui"))
 
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.savedstate)
     implementation(libs.androidx.lifecycle.runtime.compose)
     // RECORD_AUDIO permission launcher (rememberLauncherForActivityResult).
     implementation(libs.androidx.activity.compose)

@@ -58,6 +58,7 @@ class TrialBalanceFixtureDbTest {
     private val noParties = object : PartyAccountResolver {
         override fun resolve(kind: PartyKind, key: String, displayName: String): String =
             error("fixture uses no party templates")
+        override fun find(kind: PartyKind, key: String): String? = error("fixture uses no party templates")
     }
 
     @Test

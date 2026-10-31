@@ -22,6 +22,11 @@ class PartyRepository(private val db: AppDatabase) : PartyAccountResolver {
         runBlocking { db.withTransaction { resolveInTx(kind, key, displayName) } }
     }
 
+    /** Read only. Blocks like [resolve], so the same threads apply (never the main thread). */
+    override fun find(kind: PartyKind, key: String): String? = runBlocking {
+        db.partyDao().find(kind.name, key)?.accountCode
+    }
+
     private suspend fun resolveInTx(kind: PartyKind, key: String, displayName: String): String {
         db.partyDao().find(kind.name, key)?.let { return it.accountCode }
 

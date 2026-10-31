@@ -111,6 +111,16 @@ class ReportsViewModelTest {
         assertTrue(CsvWriter.write(rial).contains("1300"))
     }
 
+    /** Default fiscal year: the one chosen in Settings, otherwise the Jalali year of today (1405 on this clock). */
+    @Test
+    fun reportsDefaultToTheFiscalYearChosenInSettings() {
+        settings.setFiscalYear(1404)
+        assertEquals(1404, ReportsViewModel(ledger, clock, settings).ui.value.year)
+
+        settings.setFiscalYear(null)
+        assertEquals(1405, ReportsViewModel(ledger, clock, settings).ui.value.year)
+    }
+
     @Test
     fun journalListsOnlyDocumentsInTheTypedJalaliRange() {
         vm.selectKind(ReportKind.JOURNAL)

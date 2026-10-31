@@ -253,4 +253,7 @@ class LedgerRepository(
 private object NoPartyResolver : PartyAccountResolver {
     override fun resolve(kind: PartyKind, key: String, displayName: String): String =
         throw IllegalStateException("party resolution is not used by reverse()")
+
+    override fun find(kind: PartyKind, key: String): String? =
+        throw IllegalStateException("party lookup is not used by reverse()")
 }

@@ -114,6 +114,7 @@ class PostingEngineTest {
     fun resolverCodeOutsidePartyRangeIsRejected() {
         val bad = object : PartyAccountResolver {
             override fun resolve(kind: PartyKind, key: String, displayName: String) = "1350"
+            override fun find(kind: PartyKind, key: String): String? = null
         }
         assertFailsWith<DomainException> { testEngine(bad).post(intent(SALE_CREDIT, party = customer)) }
     }

@@ -147,6 +147,42 @@ class LedgerScreenTest {
         assertNoEditOrDeleteAction()
     }
 
+    /** Account picker balances use the unit from LocalAmountUnit, the same unit as every other money display (T13 item 4). */
+    @Test
+    fun accountPickerBalanceShowsInRialWhenRialIsChosen() {
+        assertBalanceInUnit(AmountUnit.RIAL, 5_000_000L, "ریال")
+    }
+
+    @Test
+    fun accountPickerBalanceShowsInTomanWhenTomanIsChosen() {
+        assertBalanceInUnit(AmountUnit.TOMAN, 5_000_000L, "تومان")
+    }
+
+    private fun assertBalanceInUnit(unit: AmountUnit, netRial: Long, unitWord: String) {
+        compose.setContent {
+            AccountingTheme {
+                CompositionLocalProvider(LocalAmountUnit provides unit) {
+                    AccountPicker(
+                        years = listOf(1404),
+                        selectedYear = 1404,
+                        onYear = {},
+                        rows = listOf(
+                            AccountRow(code = "1100", nameFa = "صندوق", level = AccountLevel.DETAIL, depth = 0, netRial = netRial),
+                        ),
+                        query = "",
+                        onQuery = {},
+                        hideZero = false,
+                        onHideZero = {},
+                        onPick = {},
+                    )
+                }
+            }
+        }
+        val expected = str(R.string.amount_side, MoneyFormat.format(netRial, unit), str(R.string.side_debit))
+        compose.onNodeWithText(expected).assertIsDisplayed()
+        assertTrue(expected.contains(unitWord))
+    }
+
     /** Committed-data scope: account ledger lists committed lines only, with no edit or delete on them. */
     @Test
     fun committedAccountLedgerHasNoEditOrDelete() {

@@ -1,6 +1,7 @@
 package com.example.accounting.feature.entry
 
 import androidx.compose.material3.Text
+import androidx.lifecycle.SavedStateHandle
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -177,6 +178,7 @@ class EntryScreenTest {
                 parserProvider = FixedProvider(StubParser(sodaResult())),
                 clock = clock,
                 settings = SettingsRepository(context),
+                savedState = SavedStateHandle(),
             )
             val onEntryTab = mutableStateOf(true)
             compose.setContent {
@@ -342,6 +344,7 @@ class EntryScreenTest {
                 parserProvider = FixedProvider(StubParser(sodaResult())),
                 clock = clock,
                 settings = SettingsRepository(context),
+                savedState = SavedStateHandle(),
             )
             compose.setContent {
                 AccountingTheme {

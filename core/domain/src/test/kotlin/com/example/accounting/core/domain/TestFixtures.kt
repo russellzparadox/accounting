@@ -10,6 +10,8 @@ class FakeParties : PartyAccountResolver {
 
     override fun resolve(kind: PartyKind, key: String, displayName: String): String =
         created.getOrPut(kind to key) { (kind.codes.first + created.keys.count { it.first == kind }).toString() }
+
+    override fun find(kind: PartyKind, key: String): String? = created[kind to key]
 }
 
 fun testEngine(parties: PartyAccountResolver = FakeParties()): PostingEngine {

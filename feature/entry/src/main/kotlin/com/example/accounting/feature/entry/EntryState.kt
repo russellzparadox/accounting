@@ -86,6 +86,8 @@ sealed interface ChatItem {
      * [modelRial] is the backend amount, kept so "use model amount" still works after a local switch.
      * [source] is the pipeline draft (null for manual entries); needed by withAmount.
      * [committing] is true while a confirm is in flight.
+     * [lineLabels] maps the placeholder code of a party that does not exist yet to its display label. Other codes
+     * use the chart name.
      */
     data class DraftCard(
         override val id: String,
@@ -96,6 +98,7 @@ sealed interface ChatItem {
         val modelRial: Long,
         val committing: Boolean,
         val source: PipelineResult.Draft?,
+        val lineLabels: Map<String, String> = emptyMap(),
     ) : ChatItem
 
     data class Clarification(override val id: String, val question: String) : ChatItem

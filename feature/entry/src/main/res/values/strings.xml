@@ -22,6 +22,7 @@
     <string name="reason_amount_unverified">مبلغی در متن پیدا نشد. مبلغ را بررسی کنید.</string>
     <string name="reason_amount_text_unverified">بخشی از متن که مبلغ را نشان می‌دهد پیدا نشد. بررسی کنید.</string>
     <string name="reason_low_confidence">اطمینان سیستم از این خوانش کم است.</string>
+    <string name="draft_new_party_account">«طرف حساب جدید: %1$s»</string>
 
     <!-- Draft card and buttons. -->
     <string name="confirm_title">بررسی تراکنش</string>

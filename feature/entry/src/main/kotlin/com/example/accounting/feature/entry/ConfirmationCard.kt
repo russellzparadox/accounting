@@ -110,7 +110,7 @@ fun ConfirmationCard(
 
         HorizontalDivider()
         entry.lines.forEach { line ->
-            LineRow(line = line, name = accountName(line.accountCode))
+            LineRow(line = line, name = card.lineLabels[line.accountCode] ?: accountName(line.accountCode))
         }
         HorizontalDivider()
         Text(

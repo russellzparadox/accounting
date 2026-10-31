@@ -13,9 +13,41 @@ enum class PartyKind(val controlCode: String, val codes: IntRange) {
 interface PartyAccountResolver {
     /**
      * [key] comes from [partyKey]; [displayName] is the trimmed original spelling.
-     * Must return a 4-digit code inside [PartyKind.codes].
+     * Must return a 4-digit code inside [PartyKind.codes]. May create the party (a write).
      */
     fun resolve(kind: PartyKind, key: String, displayName: String): String
+
+    /** Read-only lookup: the code of an existing party, or null. Must never create anything. */
+    fun find(kind: PartyKind, key: String): String?
+}
+
+/** A party whose معین does not exist yet. It is created only when a draft is confirmed (T13). */
+data class UnsavedParty(val kind: PartyKind, val key: String, val displayName: String)
+
+/**
+ * Resolver for building drafts (T13). Never writes. A known party resolves to its real code. An unknown party
+ * resolves to [placeholderCode] (a code in the kind's range, never allocated) and is recorded in [unsaved].
+ * The caller re-posts the intent with the real resolver at confirm time, which creates the party once.
+ * Use one instance per draft run, because it keeps the list of unsaved parties of that run.
+ */
+class DraftPartyResolver(private val existing: (PartyKind, String) -> String?) : PartyAccountResolver {
+    private val recorded = linkedMapOf<Pair<PartyKind, String>, UnsavedParty>()
+
+    /** Unknown parties seen by this resolver, in first-seen order. */
+    val unsaved: List<UnsavedParty> get() = recorded.values.toList()
+
+    override fun resolve(kind: PartyKind, key: String, displayName: String): String {
+        existing(kind, key)?.let { return it }
+        recorded.putIfAbsent(kind to key, UnsavedParty(kind, key, displayName))
+        return placeholderCode(kind)
+    }
+
+    override fun find(kind: PartyKind, key: String): String? = existing(kind, key)
+
+    companion object {
+        /** Last code of the kind's range. Only ever shown on a draft line, never posted (see [unsaved]). */
+        fun placeholderCode(kind: PartyKind): String = kind.codes.last.toString()
+    }
 }
 
 /** Matching key for party names: Persian ي/ك folded to ی/ک, ZWNJ and all whitespace removed. */

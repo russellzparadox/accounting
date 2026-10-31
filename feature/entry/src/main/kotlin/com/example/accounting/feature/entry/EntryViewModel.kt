@@ -1,6 +1,7 @@
 package com.example.accounting.feature.entry
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.accounting.core.data.config.ConfigStore
@@ -9,11 +10,13 @@ import com.example.accounting.core.data.nlp.NlParserProvider
 import com.example.accounting.core.data.repo.LedgerRepository
 import com.example.accounting.core.data.seed.ChartSeeder
 import com.example.accounting.core.domain.ChartOfAccounts
+import com.example.accounting.core.domain.DraftPartyResolver
 import com.example.accounting.core.domain.FiscalYear
 import com.example.accounting.core.domain.JournalEntry
 import com.example.accounting.core.domain.PartyAccountResolver
 import com.example.accounting.core.domain.PostingEngine
 import com.example.accounting.core.domain.TransactionIntent
+import com.example.accounting.core.domain.UnsavedParty
 import com.example.accounting.core.domain.pipeline.ConfirmReason
 import com.example.accounting.core.domain.pipeline.InputNormalizer
 import com.example.accounting.core.domain.pipeline.NlParser
@@ -58,24 +61,24 @@ class EntryViewModel @Inject constructor(
     private val parserProvider: NlParserProvider,
     private val clock: Clock,
     private val settings: SettingsRepository,
+    private val savedState: SavedStateHandle,
 ) : ViewModel() {
 
     private val mutableState = MutableStateFlow(EntryUiState())
     val state: StateFlow<EntryUiState> = mutableState.asStateFlow()
 
-    private val inputText = MutableStateFlow("")
-
     /**
      * Unsent text in the entry field. Held here, not in the composable, so it survives leaving the tab
-     * (this ViewModel is Activity-scoped and the tab's route leaves composition).
+     * (this ViewModel is Activity-scoped and the tab's route leaves composition). It is also in [savedState],
+     * so it survives process death too (T13 item 4).
      */
-    val input: StateFlow<String> = inputText.asStateFlow()
+    val input: StateFlow<String> = savedState.getStateFlow(KEY_INPUT, "")
 
     /** Seq of the last voice transcript applied to [input]. */
     private var lastVoiceSeq = 0
 
     fun onInputChange(text: String) {
-        inputText.value = text
+        savedState[KEY_INPUT] = text
     }
 
     /**
@@ -86,7 +89,7 @@ class EntryViewModel @Inject constructor(
     fun onVoiceTranscript(transcript: VoiceTranscript) {
         if (transcript.seq <= lastVoiceSeq) return
         lastVoiceSeq = transcript.seq
-        inputText.value = transcript.text
+        savedState[KEY_INPUT] = transcript.text
     }
 
     private val claimLock = Mutex()
@@ -164,9 +167,14 @@ class EntryViewModel @Inject constructor(
             parser.parse(normalized)
         }
         val fiscal = openFiscalYear(entryDate(parsed))
-        val pipeline = NlPipeline(ReplayParser(parsed), PostingEngine(chart, parties, fiscal), fiscal)
+        // Drafts never write: an unknown party gets a placeholder code and is created only at confirm (see confirm).
+        val draftParties = draftPartyResolver()
+        val pipeline = NlPipeline(ReplayParser(parsed), PostingEngine(chart, draftParties, fiscal), fiscal)
         return when (val result = pipeline.process(text)) {
-            is PipelineResult.Draft -> Step(draftCard(newId(), result, result.intent.amountRial), pending = null)
+            is PipelineResult.Draft -> Step(
+                draftCard(newId(), result, result.intent.amountRial, lineLabels(draftParties.unsaved)),
+                pending = null,
+            )
             is PipelineResult.NeedsClarification ->
                 Step(ChatItem.Clarification(newId(), result.question), pending = text)
             is PipelineResult.Failure -> Step(errorItem(result.error.toErrorKind(), text), pending = null)
@@ -176,7 +184,8 @@ class EntryViewModel @Inject constructor(
     /**
      * Commits the draft once. The first confirm marks the card as committing under [claimLock];
      * any later confirm for the same draft finds the flag and does nothing.
-     * Party lookup already happened when the draft was built (PostingEngine.post), on IO.
+     * The entry is posted again here with the real party resolver (on IO), so a new party is created only by a
+     * confirmed commit. The draft shown on the card was built with a read-only resolver and writes nothing.
      */
     private suspend fun confirm(draftId: String) {
         val card = claimLock.withLock {
@@ -186,7 +195,11 @@ class EntryViewModel @Inject constructor(
             current
         }
         val doc = try {
-            withContext(Dispatchers.IO) { ledger.commit(card.entry) }
+            withContext(Dispatchers.IO) {
+                val fiscal = openFiscalYear(card.intent.date)
+                // Same document id as the draft, so the committed document is the one the user confirmed.
+                ledger.commit(PostingEngine(chart, parties, fiscal, idGenerator = { card.entry.id }).post(card.intent))
+            }
         } catch (e: CancellationException) {
             release(card)
             throw e
@@ -242,7 +255,7 @@ class EntryViewModel @Inject constructor(
             appendItem(errorItem(EntryErrorKind.BAD_RESPONSE, null))
             return
         }
-        mutableState.update { it.replace(card.id, draftCard(card.id, updated, card.modelRial)) }
+        mutableState.update { it.replace(card.id, draftCard(card.id, updated, card.modelRial, card.lineLabels)) }
     }
 
     /** Reversal only: [docId] is the committed entry id. The original document is never changed. */
@@ -283,8 +296,9 @@ class EntryViewModel @Inject constructor(
                     memo = action.memo,
                     confidence = MANUAL_CONFIDENCE,
                 )
-                val entry = PostingEngine(chart, parties, fiscal).post(intent)
-                manualCard(newId(), entry, intent)
+                val draftParties = draftPartyResolver()
+                val entry = PostingEngine(chart, draftParties, fiscal).post(intent)
+                manualCard(newId(), entry, intent, lineLabels(draftParties.unsaved))
             }
         } catch (e: CancellationException) {
             throw e
@@ -321,7 +335,20 @@ class EntryViewModel @Inject constructor(
         return if (supported) date else LocalDate.now(clock)
     }
 
-    private fun draftCard(id: String, draft: PipelineResult.Draft, modelRial: Long): ChatItem.DraftCard =
+    /** Read-only party lookup for building a draft. Unknown parties are never created here. */
+    private fun draftPartyResolver(): DraftPartyResolver = DraftPartyResolver { kind, key -> parties.find(kind, key) }
+
+    /** Placeholder account code of each unsaved party -> «طرف حساب جدید: name», shown on the draft line. */
+    private fun lineLabels(unsaved: List<UnsavedParty>): Map<String, String> = unsaved.associate { party ->
+        DraftPartyResolver.placeholderCode(party.kind) to string(R.string.draft_new_party_account, party.displayName)
+    }
+
+    private fun draftCard(
+        id: String,
+        draft: PipelineResult.Draft,
+        modelRial: Long,
+        lineLabels: Map<String, String>,
+    ): ChatItem.DraftCard =
         ChatItem.DraftCard(
             id = id,
             entry = draft.entry,
@@ -331,9 +358,15 @@ class EntryViewModel @Inject constructor(
             modelRial = modelRial,
             committing = false,
             source = draft,
+            lineLabels = lineLabels,
         )
 
-    private fun manualCard(id: String, entry: JournalEntry, intent: TransactionIntent): ChatItem.DraftCard =
+    private fun manualCard(
+        id: String,
+        entry: JournalEntry,
+        intent: TransactionIntent,
+        lineLabels: Map<String, String>,
+    ): ChatItem.DraftCard =
         ChatItem.DraftCard(
             id = id,
             entry = entry,
@@ -343,6 +376,7 @@ class EntryViewModel @Inject constructor(
             modelRial = intent.amountRial,
             committing = false,
             source = null,
+            lineLabels = lineLabels,
         )
 
     private fun reasonText(reason: ConfirmReason): String = when (reason) {
@@ -403,5 +437,8 @@ class EntryViewModel @Inject constructor(
     private companion object {
         /** Manual entries are typed by the user, so the model-confidence check does not apply. */
         const val MANUAL_CONFIDENCE = 100
+
+        /** SavedStateHandle key of the unsent entry text. */
+        const val KEY_INPUT = "entry_input"
     }
 }

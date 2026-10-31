@@ -1,5 +1,6 @@
 package com.example.accounting.feature.entry
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.example.accounting.core.data.config.BackendConfig
 import com.example.accounting.core.data.config.ConfigStore
@@ -12,6 +13,9 @@ import com.example.accounting.core.data.seed.ChartSeeder
 import com.example.accounting.core.domain.ChartOfAccounts
 import com.example.accounting.core.domain.ExpenseCategory
 import com.example.accounting.core.domain.PaidWith
+import com.example.accounting.core.domain.PartyKind
+import com.example.accounting.core.domain.Side
+import com.example.accounting.core.domain.partyKey
 import com.example.accounting.core.domain.TemplateId
 import com.example.accounting.core.domain.TransactionIntent
 import com.example.accounting.core.domain.pipeline.ConfirmReason
@@ -69,7 +73,10 @@ class EntryViewModelTest {
         db.close()
     }
 
-    private fun viewModel(parser: NlParser = ScriptedParser()): EntryViewModel = EntryViewModel(
+    private fun viewModel(
+        parser: NlParser = ScriptedParser(),
+        saved: SavedStateHandle = SavedStateHandle(),
+    ): EntryViewModel = EntryViewModel(
         context = context,
         ledger = ledger,
         chart = chart,
@@ -79,6 +86,7 @@ class EntryViewModelTest {
         parserProvider = FixedProvider(parser),
         clock = clock,
         settings = SettingsRepository(context),
+        savedState = saved,
     )
 
     private fun configure() = configStore.save(BackendConfig("https://backend.test", "test-token"))
@@ -124,6 +132,19 @@ class EntryViewModelTest {
         assertEquals("نوشابه ۵۰۰٬۰۰۰ تومان خریدم", vm.input.value)
     }
 
+    /**
+     * Process death (T13 item 4): the saved state keeps the unsent text. A ViewModel rebuilt on the same saved state
+     * (what the system does after the process is killed) shows the same text in the field.
+     */
+    @Test
+    fun unsentTextSurvivesProcessDeath() {
+        val saved = SavedStateHandle()
+        viewModel(saved = saved).onInputChange("نوشابه ۵۰۰٬۰۰۰ تومان")
+
+        val restored = SavedStateHandle(saved.keys().associateWith { saved.get<Any?>(it) })
+        assertEquals("نوشابه ۵۰۰٬۰۰۰ تومان", viewModel(saved = restored).input.value)
+    }
+
     @Test
     fun sodaExampleConfirmsIntoBalancedLedger() = runBlocking {
         configure()
@@ -163,6 +184,7 @@ class EntryViewModelTest {
             parserProvider = FixedProvider(ScriptedParser(sodaIntent(date = previousYearDate))),
             clock = lateClock,
             settings = SettingsRepository(context),
+            savedState = SavedStateHandle(),
         )
 
         vm.handle(EntryAction.Submit(SODA_TEXT))
@@ -349,6 +371,109 @@ class EntryViewModelTest {
         assertTrue(ledger.journal(jalaliYear).first().isEmpty())
     }
 
+    /** Credit purchase from a supplier that does not exist yet (T13 item 3). */
+    private fun creditIntent(party: String) = ParserResult.Intent(
+        ParsedIntent(
+            intent = TransactionIntent(
+                type = TemplateId.PURCHASE_CREDIT,
+                amountRial = SODA_RIAL,
+                date = LocalDate.of(2026, 1, 10),
+                partyName = party,
+                memo = "نوشابه",
+                confidence = 92,
+            ),
+            amountText = "500٬000 تومان",
+            amountValue = 500_000L,
+            amountUnit = AmountUnit.TOMAN,
+        ),
+    )
+
+    /** Discarding a draft writes nothing: no معین row, no document. */
+    @Test
+    fun discardedCreditDraftCreatesNoParty() = runBlocking {
+        configure()
+        val vm = viewModel(ScriptedParser(creditIntent(SUPPLIER)))
+        vm.handle(EntryAction.Submit(CREDIT_TEXT))
+        val card = vm.state.value.items.filterIsInstance<ChatItem.DraftCard>().single()
+        assertEquals(listOf(context.getString(R.string.draft_new_party_account, SUPPLIER)), card.lineLabels.values.toList())
+
+        vm.handle(EntryAction.Discard(card.id))
+
+        assertNull(vm.state.value.draft(card.id))
+        assertEquals(0, db.partyDao().count())
+        assertNull(db.partyDao().find(PartyKind.SUPPLIER.name, partyKey(SUPPLIER)))
+        assertTrue(ledger.journal(jalaliYear).first().isEmpty())
+    }
+
+    /** Confirm creates the party once; a second confirm of the same draft does nothing. */
+    @Test
+    fun confirmedCreditDraftCreatesThePartyOnceAndDoubleConfirmCommitsOnce() = runBlocking {
+        configure()
+        val vm = viewModel(ScriptedParser(creditIntent(SUPPLIER)))
+        vm.handle(EntryAction.Submit(CREDIT_TEXT))
+        val card = vm.state.value.items.filterIsInstance<ChatItem.DraftCard>().single()
+        assertEquals(0, db.partyDao().count())
+
+        vm.handle(EntryAction.Confirm(card.id))
+        vm.handle(EntryAction.Confirm(card.id))
+
+        assertEquals(1, db.partyDao().count())
+        val party = checkNotNull(db.partyDao().find(PartyKind.SUPPLIER.name, partyKey(SUPPLIER)))
+        val committed = vm.state.value.items.filterIsInstance<ChatItem.Committed>().single()
+        assertEquals(card.entry.id, committed.doc.entry.id)
+        val creditLine = committed.doc.entry.lines.single { it.side == Side.CREDIT }
+        assertEquals(party.accountCode, creditLine.accountCode)
+        assertFalse(committed.doc.entry.lines.any { it.accountCode == "2199" })
+        assertEquals(1, ledger.journal(jalaliYear).first().size)
+        val trial = ledger.trialBalance(jalaliYear)
+        assertEquals(trial.debitTotal, trial.creditTotal)
+    }
+
+    /**
+     * Voice path for amounts (T13 item 2): the transcript fills the field, then Submit runs the pipeline. Each draft
+     * must match the expected rial and nothing commits by itself.
+     */
+    @Test
+    fun spokenAmountSentencesReachBalancedDraftsThroughTheVoicePath() = runBlocking {
+        configure()
+        val cases = listOf(
+            Triple("۴ قوطی نوشابه روی هم نیم میلیون تومان خریدم", "نیم میلیون تومان", 5_000_000L),
+            Triple("نیم میلیون تومن نقد خریدم", "نیم میلیون تومن", 5_000_000L),
+            Triple("دو و نیم میلیون تومان خرید نقد", "دو و نیم میلیون تومان", 25_000_000L),
+            Triple("۲ و نیم میلیون تومان نقد خریدم", "2 و نیم میلیون تومان", 25_000_000L),
+            Triple("سیصد و پنجاه هزار تومان نقد خریدم", "سیصد و پنجاه هزار تومان", 3_500_000L),
+            Triple("یک میلیون و نیم تومان نقد خریدم", "یک میلیون و نیم تومان", 15_000_000L),
+        )
+        cases.forEachIndexed { index, (spoken, amountText, rial) ->
+            val vm = viewModel(
+                ScriptedParser(
+                    ParserResult.Intent(
+                        ParsedIntent(
+                            intent = TransactionIntent(
+                                type = TemplateId.PURCHASE_CASH,
+                                amountRial = rial,
+                                date = LocalDate.of(2026, 1, 10),
+                                paidWith = PaidWith.CASH,
+                                confidence = 92,
+                            ),
+                            amountText = amountText,
+                            amountValue = null,
+                            amountUnit = AmountUnit.TOMAN,
+                        ),
+                    ),
+                ),
+            )
+            vm.onVoiceTranscript(VoiceTranscript(spoken, index + 1))
+            vm.handle(EntryAction.Submit(vm.input.value))
+
+            val card = vm.state.value.items.filterIsInstance<ChatItem.DraftCard>().single()
+            assertTrue("no confirm reason: $spoken", card.reasons.isEmpty())
+            assertEquals(spoken, rial, card.entry.debitTotal.rial)
+            assertTrue("nothing commits by itself: $spoken", vm.state.value.items.none { it is ChatItem.Committed })
+        }
+        assertTrue(ledger.journal(jalaliYear).first().isEmpty())
+    }
+
     private fun spokenIntent() = ParserResult.Intent(
         ParsedIntent(
             intent = TransactionIntent(
@@ -384,6 +509,8 @@ class EntryViewModelTest {
     private companion object {
         const val SODA_TEXT = "۴ قوطی نوشابه روی هم ۵۰۰٬۰۰۰ تومان خریدم"
         const val SPOKEN_TEXT = "۴ قوطی نوشابه روی هم پانصد هزار تومان خریدم"
+        const val CREDIT_TEXT = "۴ قوطی نوشابه روی هم ۵۰۰٬۰۰۰ تومان نسیه از ابرام خریدم"
+        const val SUPPLIER = "ابرام"
 
         /** 500 000 toman = 5 000 000 rial. */
         const val SODA_RIAL = 5_000_000L
