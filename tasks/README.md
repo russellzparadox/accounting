@@ -28,7 +28,7 @@ Run sequentially, one subagent at a time. Handouts are the only inter-task chann
 | T12b | settings-follow-through | T12 | done (CI green run 41203285636, build #118; audit items 1-5 MET, 2 code-only sub-points) |
 | T13a | emulator-qa | T12b | done (instrumented run 41208267404 green, 13 QA files pulled; PDF Persian shaping needs human look) |
 | T13 | qa | T12b, T13a | done (CI green run 41210267830 on de7c888; live LLM eval not run, no key; see handouts/T13-qa.md) |
-| T14 | release-prep | T13, T09c | in_progress |
+| T14 | release-prep | T13, T09c | partial (R8 release build green; minified emulator run RED; docs not written; see handouts/T14-release-prep.md) |
 
 ## Run order
 T00 -> T01 -> T01c -> T01b -> (T01d after T03) -> T02 -> T03 -> T04 -> T05 -> T06 -> T07 -> T08a -> T06b -> T08 -> T09 -> T10 -> T10b -> T11 -> T12 -> T12b -> T13a -> T13 -> T09b -> T09c -> T14

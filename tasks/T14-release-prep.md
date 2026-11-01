@@ -1,5 +1,5 @@
 # T14 — release-prep
-Status: in_progress
+Status: partial (stopped by user; see handouts/T14-release-prep.md)
 Depends: T13
 Read first: CLAUDE.md, handouts/T13-qa.md
 Skills to invoke: persian-writing:persian-writing
