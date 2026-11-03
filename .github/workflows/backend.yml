@@ -35,7 +35,7 @@ jobs:
 
       - name: Set up Node 20
         if: hashFiles('backend/package.json') != ''
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
