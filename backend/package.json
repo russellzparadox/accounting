@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
-    "openai": "^5.23.2",
+    "openai": "^7.49.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"
   }
